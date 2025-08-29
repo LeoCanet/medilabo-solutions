@@ -39,8 +39,7 @@ public class SecurityConfig {
 
             // Configuration des autorisations avec Spring Security 6
             .authorizeHttpRequests(authorize -> authorize
-                    .requestMatchers("/api/v1/patients/**", "/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
-                    .anyRequest().authenticated()
+                    .anyRequest().permitAll()
             )
 
             // Configuration des headers de sécurité
