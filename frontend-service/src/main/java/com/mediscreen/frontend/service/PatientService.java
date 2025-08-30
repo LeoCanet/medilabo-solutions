@@ -22,13 +22,6 @@ public class PatientService {
         return patientApiClient.getAllPatients();
     }
 
-    public List<PatientDto> searchPatients(String nom) {
-        if (nom == null || nom.trim().isEmpty()) {
-            return getAllPatients();
-        }
-        return patientApiClient.searchPatients(nom);
-    }
-
     public PatientDto getPatientById(Long id) {
         return patientApiClient.getPatientById(id);
     }
@@ -63,9 +56,7 @@ public class PatientService {
         }
     }
 
-    public void deletePatient(Long id) {
-        patientApiClient.deletePatient(id);
-    }
+    
 
     public PatientFormDto getPatientFormById(Long id) {
         PatientDto patientDto = getPatientById(id);

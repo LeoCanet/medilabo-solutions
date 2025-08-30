@@ -35,22 +35,13 @@ public interface PatientMapper {
      * Conversion PatientDto -> Patient (pour updates)
      */
     Patient toEntity(PatientDto patientDto);
-    
-    /**
-     * Conversion Patient -> PatientSummaryDto (optimisé pour listes)
-     */
-    @Mapping(target = "age", expression = "java(patient.getAge())")
-    PatientSummaryDto toSummaryDto(Patient patient);
-    
+
     /**
      * Conversion List<Patient> -> List<PatientDto> (Virtual Threads compatible)
      */
     List<PatientDto> toDtoList(List<Patient> patients);
     
-    /**
-     * Conversion List<Patient> -> List<PatientSummaryDto> (Performance optimisée)
-     */
-    List<PatientSummaryDto> toSummaryDtoList(List<Patient> patients);
+    
     
     // === ADRESSE MAPPINGS ===
     

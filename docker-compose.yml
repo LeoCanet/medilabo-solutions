@@ -1,0 +1,204 @@
+# Docker Compose - Mediscreen Application
+# Architecture microservices complète avec bases de données
+
+version: '3.8'
+
+services:
+  # Base de données MySQL pour le service Patient
+  mysql-db:
+    image: mysql:8.0
+    container_name: mediscreen-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: mediscreen_patients
+      MYSQL_USER: mediscreen
+      MYSQL_PASSWORD: mediscreen123
+      MYSQL_ROOT_HOST: "%"
+    ports:
+      - "3307:3306"  # Port externe différent pour éviter conflits
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./patient-service/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - mediscreen-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Base de données MongoDB pour le service Notes (préparé pour Sprint 2)
+  mongodb:
+    image: mongo:7.0
+    container_name: mediscreen-mongo
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: admin123
+      MONGO_INITDB_DATABASE: mediscreen_notes
+    ports:
+      - "27018:27017"  # Port externe différent
+    volumes:
+      - mongodb_data:/data/db
+      - ./init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
+    networks:
+      - mediscreen-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Service Patient (Sprint 1) ✅
+  patient-service:
+    build:
+      context: ./patient-service
+      dockerfile: Dockerfile
+    container_name: mediscreen-patient-service
+    restart: unless-stopped
+    ports:
+      - "8081:8081"
+    environment:
+      # Configuration de la base de données
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-db:3306/mediscreen_patients?createDatabaseIfNotExist=true&useUnicode=true&characterEncoding=utf8&useSSL=false&allowPublicKeyRetrieval=true&allowMultiQueries=true
+      SPRING_DATASOURCE_USERNAME: mediscreen
+      SPRING_DATASOURCE_PASSWORD: mediscreen123
+
+      # Configuration JPA/Hibernate
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SPRING_JPA_SHOW_SQL: "true"
+      SPRING_JPA_DATABASE_PLATFORM: org.hibernate.dialect.MySQLDialect
+
+      # Configuration de l'application
+      SPRING_APPLICATION_NAME: patient-service
+      SPRING_PROFILES_ACTIVE: docker
+
+      # Virtual threads Java 21
+      SPRING_THREADS_VIRTUAL_ENABLED: "true"
+    depends_on:
+      mysql-db:
+        condition: service_healthy
+    networks:
+      - mediscreen-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  # Service Gateway (Sprint 1) ✅
+  gateway-service:
+    build:
+      context: ./gateway-service
+      dockerfile: Dockerfile
+    container_name: mediscreen-gateway
+    restart: unless-stopped
+    ports:
+      - "8888:8888"
+    environment:
+      SPRING_APPLICATION_NAME: gateway-service
+      SPRING_PROFILES_ACTIVE: docker
+
+      # Configuration des routes (mise à jour au fur et à mesure des sprints)
+      SPRING_CLOUD_GATEWAY_ROUTES[0]_ID: patient-service-route
+      SPRING_CLOUD_GATEWAY_ROUTES[0]_URI: http://patient-service:8081
+      SPRING_CLOUD_GATEWAY_ROUTES[0]_PREDICATES[0]: Path=/api/v1/patients/**
+
+      # Désactiver la vérification de compatibilité
+      SPRING_CLOUD_COMPATIBILITY_VERIFIER_ENABLED: "false"
+    depends_on:
+      patient-service:
+        condition: service_healthy
+    networks:
+      - mediscreen-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8888/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Service Frontend (Sprint 1) ✅
+  frontend-service:
+    build:
+      context: ./frontend-service
+      dockerfile: Dockerfile
+    container_name: mediscreen-frontend
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_APPLICATION_NAME: frontend-service
+      SPRING_PROFILES_ACTIVE: docker
+
+      # URL du Gateway
+      FEIGN_CLIENT_URL: http://gateway-service:8888
+
+      # Configuration des logs
+      LOGGING_LEVEL_COM_MEDISCREEN_FRONTEND_CLIENT_PATIENTAPICLIENT: DEBUG
+
+      # Désactiver la vérification de compatibilité Spring Cloud
+      SPRING_CLOUD_COMPATIBILITY_VERIFIER_ENABLED: "false"
+    depends_on:
+      gateway-service:
+        condition: service_healthy
+    networks:
+      - mediscreen-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # TODO: Notes Service (Sprint 2) - À développer
+  # notes-service:
+  #   build:
+  #     context: ./notes-service
+  #     dockerfile: Dockerfile
+  #   container_name: mediscreen-notes-service
+  #   restart: unless-stopped
+  #   ports:
+  #     - "8082:8082"
+  #   environment:
+  #     SPRING_DATA_MONGODB_URI: mongodb://admin:admin123@mongodb:27017/mediscreen_notes?authSource=admin
+  #     SPRING_APPLICATION_NAME: notes-service
+  #     SPRING_PROFILES_ACTIVE: docker
+  #   depends_on:
+  #     mongodb:
+  #       condition: service_healthy
+  #   networks:
+  #     - mediscreen-network
+
+  # TODO: Assessment Service (Sprint 3) - À développer
+  # assessment-service:
+  #   build:
+  #     context: ./assessment-service
+  #     dockerfile: Dockerfile
+  #   container_name: mediscreen-assessment-service
+  #   restart: unless-stopped
+  #   ports:
+  #     - "8083:8083"
+  #   environment:
+  #     PATIENT_SERVICE_URL: http://patient-service:8081
+  #     NOTES_SERVICE_URL: http://notes-service:8082
+  #     SPRING_APPLICATION_NAME: assessment-service
+  #     SPRING_PROFILES_ACTIVE: docker
+  #   depends_on:
+  #     - patient-service
+  #     - notes-service
+  #   networks:
+  #     - mediscreen-network
+
+# Volumes persistants
+volumes:
+  mysql_data:
+    name: mediscreen_mysql_data
+  mongodb_data:
+    name: mediscreen_mongodb_data
+
+# Réseau dédié
+networks:
+  mediscreen-network:
+    name: mediscreen-network
+    driver: bridge

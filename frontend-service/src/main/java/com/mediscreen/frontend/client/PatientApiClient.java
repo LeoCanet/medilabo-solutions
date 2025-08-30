@@ -13,9 +13,6 @@ public interface PatientApiClient {
     @GetMapping("/api/v1/patients")
     List<PatientDto> getAllPatients();
 
-    @GetMapping("/api/v1/patients/search")
-    List<PatientDto> searchPatients(@RequestParam("nom") String nom);
-
     @GetMapping("/api/v1/patients/{id}")
     PatientDto getPatientById(@PathVariable("id") Long id);
 
@@ -25,6 +22,5 @@ public interface PatientApiClient {
     @PutMapping("/api/v1/patients/{id}")
     void updatePatient(@PathVariable("id") Long id, @RequestBody PatientDto patient);
 
-    @DeleteMapping("/api/v1/patients/{id}")
-    void deletePatient(@PathVariable("id") Long id);
+    
 }

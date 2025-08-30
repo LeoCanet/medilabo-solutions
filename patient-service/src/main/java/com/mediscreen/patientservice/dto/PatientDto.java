@@ -5,6 +5,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import java.time.LocalDate;
 import java.time.Period;
 
+
 /**
  * DTO Patient avec Record
  * Utilisé pour les échanges API REST
@@ -71,7 +72,7 @@ public record PatientDto(
      * Nom complet avec String Templates
      */
     public String getNomComplet() {
-        return STR."\{prenom} \{nom}";
+        return String.format("%s %s", prenom, nom);
     }
     
     /**
@@ -79,8 +80,8 @@ public record PatientDto(
      */
     public String getDescription() {
         return switch (genre) {
-            case "M" -> STR."Monsieur \{getNomComplet()}";
-            case "F" -> STR."Madame \{getNomComplet()}";
+            case "M" -> String.format("Monsieur %s", getNomComplet());
+            case "F" -> String.format("Madame %s", getNomComplet());
             default -> getNomComplet();
         };
     }

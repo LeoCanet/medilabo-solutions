@@ -30,20 +30,20 @@ public class PatientNotFoundException extends RuntimeException {
      * Constructeur avec ID du patient
      */
     public PatientNotFoundException(Long patientId) {
-        super(STR."Patient avec l'ID \{patientId} non trouvé");
+        super("Patient avec l'ID " + patientId + " non trouvé");
     }
     
     /**
      * Factory method pour créer une exception avec ID
      */
     public static PatientNotFoundException withId(Long id) {
-        return new PatientNotFoundException(STR."Patient avec l'ID \{id} non trouvé");
+        return new PatientNotFoundException("Patient avec l'ID " + id + " non trouvé");
     }
     
     /**
      * Factory method pour créer une exception avec nom complet
      */
     public static PatientNotFoundException withNomComplet(String prenom, String nom) {
-        return new PatientNotFoundException(STR."Patient '\{prenom} \{nom}' non trouvé");
+        return new PatientNotFoundException(String.format("Patient '%s %s' non trouvé", prenom, nom));
     }
 }

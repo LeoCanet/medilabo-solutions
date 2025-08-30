@@ -68,6 +68,6 @@ public class Patient {
      * Méthode utilitaire pour obtenir le nom complet
      */
     public String getNomComplet() {
-        return STR."\{prenom} \{nom}";
+        return String.format("%s %s", prenom, nom);
     }
 }

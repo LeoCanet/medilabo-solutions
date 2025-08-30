@@ -44,11 +44,11 @@ public record AdresseDto(
      * Retourne l'adresse formatée avec String Templates
      */
     public String getAdresseComplete() {
-        return STR."""
-            \{rue != null ? rue : ""}
-            \{ville != null ? STR.", \{ville}" : ""}
-            \{codePostal != null ? STR." \{codePostal}" : ""}
-            \{pays != null ? STR.", \{pays}" : ""}
-            """.trim().replaceAll("^,\\s*", "");
+        String address = "";
+        address += (rue != null ? rue : "");
+        address += (ville != null ? (address.isEmpty() ? "" : ", ") + ville : "");
+        address += (codePostal != null ? (address.isEmpty() ? "" : " ") + codePostal : "");
+        address += (pays != null ? (address.isEmpty() ? "" : ", ") + pays : "");
+        return address.trim().replaceAll("^,\\s*", "");
     }
 }

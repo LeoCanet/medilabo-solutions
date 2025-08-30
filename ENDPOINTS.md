@@ -16,17 +16,7 @@ The Patient Service exposes the core REST API for managing patient data.
 | `POST` | `/api/v1/patients` | Crée un nouveau patient. |
 | `GET` | `/api/v1/patients/{id}` | Récupère un patient par son ID. |
 | `GET` | `/api/v1/patients` | Récupère tous les patients. |
-| `GET` | `/api/v1/patients/summary` | Récupère tous les patients (format résumé). |
 | `PUT` | `/api/v1/patients/{id}` | Met à jour complètement un patient. |
-| `PATCH` | `/api/v1/patients/{id}` | Met à jour partiellement un patient. |
-| `DELETE` | `/api/v1/patients/{id}` | Supprime un patient. |
-| `GET` | `/api/v1/patients/search` | Recherche par nom, prénom, nom complet, genre, ville, code postal, téléphone. |
-| `GET` | `/api/v1/patients/search/birthdate` | Recherche par date de naissance. |
-| `GET` | `/api/v1/patients/search/birthperiod` | Recherche par période de naissance. |
-| `GET` | `/api/v1/patients/search/age` | Recherche par âge. |
-| `GET` | `/api/v1/patients/recent` | Récupère les derniers patients créés. |
-| `GET` | `/api/v1/patients/stats/genre` | Statistiques par genre. |
-| `HEAD` | `/api/v1/patients/{id}` | Vérifie si un patient existe. |
 
 ### API Documentation (Swagger UI)
 

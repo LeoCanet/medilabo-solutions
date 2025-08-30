@@ -3,6 +3,7 @@ package com.mediscreen.frontend.dto;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Past;
+import jakarta.validation.constraints.Pattern;
 import org.springframework.format.annotation.DateTimeFormat;
 
 import java.time.LocalDate;
@@ -24,6 +25,10 @@ public record PatientFormDto(
     @NotBlank(message = "Le genre est obligatoire")
     String genre,
 
+    @Pattern(
+        regexp = "^$|^(?:\\+33|0)[1-9](?:[ .-]?\\d{2}){4}$",
+        message = "Le téléphone doit être un numéro français valide (ex: 0612345678 ou +33612345678)"
+    )
     String telephone,
 
     @NotBlank(message = "La rue est obligatoire")
@@ -31,5 +36,9 @@ public record PatientFormDto(
 
     String ville,
 
+    @Pattern(
+        regexp = "^$|^\\d{5}$",
+        message = "Le code postal doit contenir 5 chiffres"
+    )
     String codePostal
 ) {}
