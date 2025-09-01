@@ -102,9 +102,9 @@ services:
       SPRING_PROFILES_ACTIVE: docker
 
       # Configuration des routes (mise à jour au fur et à mesure des sprints)
-      SPRING_CLOUD_GATEWAY_ROUTES[0]_ID: patient-service-route
-      SPRING_CLOUD_GATEWAY_ROUTES[0]_URI: http://patient-service:8081
-      SPRING_CLOUD_GATEWAY_ROUTES[0]_PREDICATES[0]: Path=/api/v1/patients/**
+      SPRING_CLOUD_GATEWAY_ROUTES_0_ID: patient-service-route
+      SPRING_CLOUD_GATEWAY_ROUTES_0_URI: http://patient-service:8081
+      SPRING_CLOUD_GATEWAY_ROUTES_0_PREDICATES_0: "Path=/api/v1/patients/**"
 
       # Désactiver la vérification de compatibilité
       SPRING_CLOUD_COMPATIBILITY_VERIFIER_ENABLED: "false"

@@ -1,58 +1,56 @@
+# syntax=docker/dockerfile:1
 # Multi-stage Dockerfile pour Frontend Service
-# Stage 1: Build avec Maven
-FROM maven:3.9-eclipse-temurin-21 AS builder
-
+# Stage 1: Build avec Maven (Maven natif, cache m2)
+FROM maven:3.9.6-eclipse-temurin-21 AS builder
 WORKDIR /app
 
-# Copie des fichiers de configuration Maven
+# Cache des dépendances
 COPY pom.xml .
-COPY .mvn .mvn
-COPY mvnw .
-COPY mvnw.cmd .
-
-# Téléchargement des dépendances (cache layer)
-RUN chmod +x mvnw && ./mvnw dependency:go-offline -B
+RUN --mount=type=cache,target=/root/.m2 mvn -B -DskipTests dependency:go-offline
 
 # Copie du code source
 COPY src ./src
 
-# Compilation
-RUN ./mvnw clean package -DskipTests
+# Build de l'artefact
+RUN --mount=type=cache,target=/root/.m2 mvn -B -DskipTests clean package
 
-# Stage 2: Runtime avec JRE
-FROM eclipse-temurin:21-jre
+# Normaliser l'artefact en /app/app.jar (jar ou war) via find (compatible /bin/sh)
+RUN set -eux; \
+    ART="$(find target -maxdepth 1 -type f \( -name '*.jar' -o -name '*.war' \) ! -name '*-sources.jar' ! -name '*-javadoc.jar' ! -name '*-plain.jar' ! -name 'original-*.jar' | head -n1)"; \
+    test -n "$ART"; \
+    cp "$ART" /app/app.jar
 
-# Métadonnées
+# Stage 2: Runtime (image épinglée)
+FROM eclipse-temurin:21-jre-jammy
+
 LABEL maintainer="mediscreen-team"
 LABEL description="Frontend Service - Interface utilisateur web"
 
-# Variables d'environnement
 ENV APP_HOME=/app
 ENV APP_USER=mediscreen
 
-# Création utilisateur non-root (sécurité)
-RUN groupadd -r ${APP_USER} && useradd -r -g ${APP_USER} ${APP_USER}
+# Création utilisateur non-root
+RUN groupadd -r "${APP_USER}" && useradd -r -g "${APP_USER}" "${APP_USER}"
 
-# Installation curl pour health check
-RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+# Installer curl pour le healthcheck
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR ${APP_HOME}
 
-# Copie du JAR depuis le stage builder
-COPY --from=builder /app/target/frontend-service-*.jar app.jar
+# Copier l'artefact avec les bons droits
+COPY --chown=${APP_USER}:${APP_USER} --from=builder /app/app.jar app.jar
 
-# Changement de propriétaire
-RUN chown -R ${APP_USER}:${APP_USER} ${APP_HOME}
-
-# Switch vers utilisateur non-root
+# Basculer sur utilisateur non-root
 USER ${APP_USER}
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD curl -f http://localhost:8080/actuator/health || exit 1
+    CMD curl -fsS http://localhost:8080/actuator/health || exit 1
 
 # Exposition du port
 EXPOSE 8080
 
 # Point d'entrée
-ENTRYPOINT ["java", "-Djava.security.egd=file:/dev/./urandom", "-jar", "app.jar"]
+ENTRYPOINT ["java", "-jar", "app.jar"]
