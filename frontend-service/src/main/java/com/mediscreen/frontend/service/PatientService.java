@@ -28,15 +28,15 @@ public class PatientService {
 
     public void savePatient(PatientFormDto formDto) {
         // Crée l'objet Adresse à partir des champs plats du formulaire
-        AdresseDto adresse = new AdresseDto(formDto.rue(), formDto.ville(), formDto.codePostal());
+        AdresseDto adresse = new AdresseDto(null, formDto.rue(), formDto.ville(), formDto.codePostal(), null);
 
         if (formDto.id() != null) {
             // C'est une mise à jour : on envoie un PatientDto complet
             PatientDto patientToUpdate = new PatientDto(
                     formDto.id(),
-                    formDto.nom(),
                     formDto.prenom(),
-                    formDto.dateDeNaissance(),
+                    formDto.nom(),
+                    formDto.dateNaissance(),
                     formDto.genre(),
                     formDto.telephone(),
                     adresse
@@ -47,7 +47,7 @@ public class PatientService {
             PatientCreateDto patientToCreate = new PatientCreateDto(
                     formDto.prenom(),
                     formDto.nom(),
-                    formDto.dateDeNaissance(),
+                    formDto.dateNaissance(),
                     formDto.genre(),
                     formDto.telephone(),
                     adresse
@@ -64,7 +64,7 @@ public class PatientService {
                 patientDto.id(),
                 patientDto.nom(),
                 patientDto.prenom(),
-                patientDto.dateDeNaissance(),
+                patientDto.dateNaissance(),
                 patientDto.genre(),
                 patientDto.telephone(),
                 patientDto.adresse() != null ? patientDto.adresse().rue() : "",

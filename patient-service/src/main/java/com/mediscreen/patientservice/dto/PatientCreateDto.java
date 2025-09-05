@@ -40,12 +40,6 @@ public record PatientCreateDto(
             throw new IllegalArgumentException("La date de naissance doit être dans le passé");
         }
         
-        // Validation du genre avec pattern matching
-        if (genre != null && !switch (genre.toUpperCase()) {
-            case "M", "F" -> true;
-            default -> false;
-        }) {
-            throw new IllegalArgumentException("Le genre doit être M ou F");
-        }
+        
     }
 }

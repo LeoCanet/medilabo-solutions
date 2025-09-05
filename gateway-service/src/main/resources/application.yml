@@ -8,7 +8,7 @@ spring:
     gateway:
       routes:
         - id: patient-service-route
-          uri: http://127.0.0.1:8081
+          uri: http://patient-service:8081
           predicates:
             - Path=/api/v1/patients/**
     compatibility-verifier:

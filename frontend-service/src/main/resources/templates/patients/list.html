@@ -13,6 +13,20 @@
         <a th:href="@{/patients/add}" class="btn btn-primary">Ajouter un patient</a>
     </div>
 
+    <!-- Messages de succès -->
+    <div th:if="${successMessage}" class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="fas fa-check-circle"></i>
+        <span th:text="${successMessage}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+
+    <!-- Messages d'erreur -->
+    <div th:if="${errorMessage}" class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="fas fa-exclamation-triangle"></i>
+        <span th:text="${errorMessage}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+
     
 
     <table class="table table-striped table-hover">
@@ -30,7 +44,7 @@
         <tr th:each="patient : ${patients}">
             <td th:text="${patient.nom}">TestNone</td>
             <td th:text="${patient.prenom}">Test</td>
-            <td th:text="${#temporals.format(patient.dateDeNaissance, 'dd/MM/yyyy')}">31/12/1966</td>
+            <td th:text="${#temporals.format(patient.dateNaissance, 'dd/MM/yyyy')}">31/12/1966</td>
             <td th:text="${patient.genre}">F</td>
             <td th:text="${patient.telephone}">100-222-3333</td>
             <td>

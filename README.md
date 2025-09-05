@@ -163,6 +163,15 @@ sudo usermod -aG docker $USER
 newgrp docker
 ```
 
+### Problème : Erreur de permission Maven (Failed to delete / Permission non accordée)
+Si vous rencontrez des erreurs de type "Failed to delete .../target" ou "Permission non accordée" lors de l'exécution de commandes Maven (comme `mvn clean`) ou depuis votre IDE, cela indique que des fichiers dans le répertoire `target` de votre projet ont été créés avec des permissions qui empêchent votre utilisateur actuel de les modifier ou de les supprimer. Cela peut arriver si Maven a été exécuté précédemment avec `sudo` ou par un autre utilisateur.
+
+**Solution :** Réattribuez la propriété des fichiers de votre projet à votre utilisateur actuel. Exécutez la commande suivante dans le répertoire racine de votre projet :
+```bash
+sudo chown -R $(whoami):$(whoami) .
+```
+Remplacez `$(whoami)` par votre nom d'utilisateur si vous n'êtes pas sûr.
+
 ### Problème : Compilation échoue
 ```bash
 # Voir les logs détaillés

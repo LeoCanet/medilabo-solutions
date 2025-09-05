@@ -22,7 +22,7 @@ public interface PatientMapper {
     /**
      * Conversion Patient -> PatientDto avec calcul automatique de l'âge
      */
-    @Mapping(target = "age", expression = "java(patient.getAge())")
+    
     PatientDto toDto(Patient patient);
     
     /**

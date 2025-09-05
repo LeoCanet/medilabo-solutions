@@ -32,8 +32,5 @@ CREATE TABLE IF NOT EXISTS patients (
     INDEX idx_patient_nom_prenom (nom, prenom),
     INDEX idx_patient_genre (genre),
     INDEX idx_patient_date_naissance (date_naissance),
-    INDEX idx_patient_telephone (telephone),
-    
-    -- Index unique pour éviter les doublons
-    UNIQUE KEY uk_patient_unique (nom, prenom, date_naissance)
+    INDEX idx_patient_telephone (telephone)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

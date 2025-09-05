@@ -15,7 +15,8 @@
             <div th:if="${errorMessage}" class="alert alert-danger" role="alert">
                 <p th:text="${errorMessage}"></p>
             </div>
-            <form th:action="@{/patients/save}" th:object="${patientFormDto}" method="post">
+            <div th:with="formActionUrl = (${patientFormDto.id == null} ? @{/patients/add} : @{/patients/update/{id}(id=${patientFormDto.id})})">
+                <form th:action="${formActionUrl}" th:object="${patientFormDto}" method="post">
                 <input type="hidden" th:field="*{id}"/>
 
                 <div class="mb-3">
@@ -33,10 +34,10 @@
                 </div>
 
                 <div class="mb-3">
-                    <label for="dateDeNaissance" class="form-label">Date de Naissance</label>
-                    <input type="date" id="dateDeNaissance" th:field="*{dateDeNaissance}" class="form-control"
-                           th:classappend="${#fields.hasErrors('dateDeNaissance')} ? 'is-invalid' : ''"/>
-                    <div class="invalid-feedback" th:if="${#fields.hasErrors('dateDeNaissance')}" th:errors="*{dateDeNaissance}"></div>
+                    <label for="dateNaissance" class="form-label">Date de Naissance</label>
+                    <input type="date" id="dateNaissance" th:field="*{dateNaissance}" class="form-control"
+                           th:classappend="${#fields.hasErrors('dateNaissance')} ? 'is-invalid' : ''"/>
+                    <div class="invalid-feedback" th:if="${#fields.hasErrors('dateNaissance')}" th:errors="*{dateNaissance}"></div>
                 </div>
 
                 <div class="mb-3">
@@ -59,22 +60,35 @@
 
                 <div class="mb-3">
                     <label for="ville" class="form-label">Ville</label>
-                    <input type="text" id="ville" th:field="*{ville}" class="form-control"/>
+                    <input type="text" id="ville" th:field="*{ville}" class="form-control"
+                           th:classappend="${#fields.hasErrors('ville')} ? 'is-invalid' : ''"/>
+                    <div class="invalid-feedback" th:if="${#fields.hasErrors('ville')}" th:errors="*{ville}"></div>
                 </div>
 
                 <div class="mb-3">
                     <label for="codePostal" class="form-label">Code Postal</label>
-                    <input type="text" id="codePostal" th:field="*{codePostal}" class="form-control"/>
+                    <input type="text" id="codePostal" th:field="*{codePostal}" class="form-control"
+                           th:classappend="${#fields.hasErrors('codePostal')} ? 'is-invalid' : ''"/>
+                    <div class="invalid-feedback" th:if="${#fields.hasErrors('codePostal')}" th:errors="*{codePostal}"></div>
                 </div>
 
                 <div class="mb-3">
                     <label for="telephone" class="form-label">Téléphone</label>
-                    <input type="text" id="telephone" th:field="*{telephone}" class="form-control"/>
+                    <input type="text" id="telephone" th:field="*{telephone}" class="form-control"
+                           th:classappend="${#fields.hasErrors('telephone')} ? 'is-invalid' : ''"/>
+                    <div class="invalid-feedback" th:if="${#fields.hasErrors('telephone')}" th:errors="*{telephone}"></div>
                 </div>
 
-                <button type="submit" class="btn btn-primary">Enregistrer</button>
+                <button type="submit" class="btn btn-primary">Enregistrer les modifications</button>
                 <a th:href="@{/patients}" class="btn btn-secondary">Annuler</a>
             </form>
+
+            <hr/>
+            <h3>Test de Soumission</h3>
+            <form action="/patients" method="get">
+                <button type="submit">Bouton de Test</button>
+            </form>
+
         </div>
     </div>
 </main>

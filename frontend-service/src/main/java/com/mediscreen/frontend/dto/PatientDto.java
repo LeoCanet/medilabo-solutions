@@ -6,10 +6,10 @@ import java.time.LocalDate;
 
 public record PatientDto(
     Long id,
-    String nom,
     String prenom,
+    String nom,
     @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
-    LocalDate dateDeNaissance,
+    LocalDate dateNaissance,
     String genre,
     String telephone,
     AdresseDto adresse

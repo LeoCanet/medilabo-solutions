@@ -15,6 +15,7 @@ import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.time.LocalDate;
 import java.util.Optional;
@@ -41,6 +42,23 @@ public class PatientController {
         return "patients/form";
     }
 
+    @PostMapping("/add")
+    public String createPatient(@Valid @ModelAttribute("patientFormDto") PatientFormDto patientFormDto, BindingResult result, Model model, RedirectAttributes redirectAttributes) {
+        if (result.hasErrors()) {
+            model.addAttribute("pageTitle", "Ajouter un patient");
+            return "patients/form";
+        }
+        try {
+            patientService.savePatient(patientFormDto);
+            redirectAttributes.addFlashAttribute("successMessage", "Patient ajouté avec succès !");
+        } catch (FeignException e) {
+            handleFeignException(e, result, model);
+            model.addAttribute("pageTitle", "Ajouter un patient");
+            return "patients/form";
+        }
+        return "redirect:/patients";
+    }
+
     @GetMapping("/update/{id}")
     public String showUpdateForm(@PathVariable("id") Long id, Model model) {
         model.addAttribute("patientFormDto", patientService.getPatientFormById(id));
@@ -48,51 +66,61 @@ public class PatientController {
         return "patients/form";
     }
 
-    @PostMapping("/save")
-    public String savePatient(@Valid @ModelAttribute PatientFormDto patientFormDto, BindingResult result, Model model) {
+    @PostMapping("/update/{id}")
+    public String updatePatient(@PathVariable("id") Long id, @Valid @ModelAttribute("patientFormDto") PatientFormDto patientFormDto, BindingResult result, Model model, RedirectAttributes redirectAttributes) {
+        log.info("=== DEBUT UPDATE PATIENT ID={} ===", id);
+        log.info("FormDTO recu: {}", patientFormDto);
+        
         if (result.hasErrors()) {
-            model.addAttribute("pageTitle", patientFormDto.id() != null ? "Modifier le patient" : "Ajouter un patient");
+            log.warn("Erreurs de validation: {}", result.getAllErrors());
+            model.addAttribute("pageTitle", "Modifier le patient");
             return "patients/form";
         }
+        
         try {
+            patientFormDto = patientFormDto.withId(id); // Assure que l'ID est bien celui de l'URL
+            log.info("FormDTO avec ID: {}", patientFormDto);
+            
             patientService.savePatient(patientFormDto);
+            log.info("=== UPDATE REUSSI ===");
+            
+            // Message de succès via flash attribute
+            redirectAttributes.addFlashAttribute("successMessage", "Patient modifié avec succès !");
+            
         } catch (FeignException e) {
-            log.error("Erreur Feign lors de l'enregistrement du patient: {}", Optional.of(e.status()), e);
-            model.addAttribute("pageTitle", patientFormDto.id() != null ? "Modifier le patient" : "Ajouter un patient");
-
-            if ((e.status() == 400 || e.status() == 422) && e.contentUTF8() != null && !e.contentUTF8().isBlank()) {
-                try {
-                    // Parse la réponse d'erreur normalisée
-                    ApiErrorResponse errorResponse = objectMapper.readValue(e.contentUTF8(), ApiErrorResponse.class);
-
-                    if (errorResponse.getErrors() != null && !errorResponse.getErrors().isEmpty()) {
-                        for (ApiFieldError error : errorResponse.getErrors()) {
-                            String field = error.getField();
-                            String message = error.getMessage();
-                            if (field != null && message != null) {
-                                result.addError(new FieldError(
-                                        "patientFormDto",
-                                        field,
-                                        message
-                                ));
-                            }
-                        }
-                    }
-
-                    // Message global éventuel
-                    if (errorResponse.getMessage() != null && !errorResponse.getMessage().isBlank()) {
-                        model.addAttribute("errorMessage", errorResponse.getMessage());
-                    }
-                } catch (JsonProcessingException jsonException) {
-                    log.error("Erreur lors du parsing de la réponse d'erreur Feign: {}", jsonException.getMessage());
-                    model.addAttribute("errorMessage", "Erreur inattendue lors de l'enregistrement: " + jsonException.getMessage());
-                }
-            } else {
-                model.addAttribute("errorMessage", "Erreur lors de l'enregistrement du patient: " + e.status() + " - " + e.getMessage());
-            }
+            log.error("=== ERREUR FEIGN UPDATE ===", e);
+            handleFeignException(e, result, model);
+            model.addAttribute("pageTitle", "Modifier le patient");
+            return "patients/form";
+        } catch (Exception e) {
+            log.error("=== ERREUR GENERALE UPDATE ===", e);
+            model.addAttribute("errorMessage", "Erreur inattendue: " + e.getMessage());
+            model.addAttribute("pageTitle", "Modifier le patient");
             return "patients/form";
         }
+        
         return "redirect:/patients";
     }
 
+    private void handleFeignException(FeignException e, BindingResult result, Model model) {
+        log.error("Erreur Feign lors de l'enregistrement du patient: status={}, body={}", e.status(), e.contentUTF8(), e);
+        if ((e.status() == 400 || e.status() == 422) && e.contentUTF8() != null && !e.contentUTF8().isBlank()) {
+            try {
+                ApiErrorResponse errorResponse = objectMapper.readValue(e.contentUTF8(), ApiErrorResponse.class);
+                if (errorResponse.getErrors() != null) {
+                    errorResponse.getErrors().forEach(fieldError -> {
+                        result.addError(new FieldError("patientFormDto", fieldError.getField(), fieldError.getMessage()));
+                    });
+                }
+                if (errorResponse.getMessage() != null && result.getGlobalErrorCount() == 0 && result.getFieldErrorCount() == 0) {
+                    model.addAttribute("errorMessage", errorResponse.getMessage());
+                }
+            } catch (JsonProcessingException jsonException) {
+                log.error("Erreur parsing JSON de l'erreur Feign", jsonException);
+                model.addAttribute("errorMessage", "Une erreur inattendue est survenue.");
+            }
+        } else {
+            model.addAttribute("errorMessage", "Une erreur technique est survenue: " + e.getMessage());
+        }
+    }
 }
