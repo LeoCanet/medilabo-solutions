@@ -3,10 +3,11 @@ package com.mediscreen.frontend.controller;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mediscreen.frontend.dto.ApiErrorResponse;
-import com.mediscreen.frontend.dto.ApiFieldError;
 import com.mediscreen.frontend.dto.PatientFormDto;
+import com.mediscreen.frontend.exception.PatientNotFoundException;
+import com.mediscreen.frontend.exception.PatientServiceException;
+import com.mediscreen.frontend.exception.PatientValidationException;
 import com.mediscreen.frontend.service.PatientService;
-import feign.FeignException;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -18,8 +19,17 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.time.LocalDate;
-import java.util.Optional;
 
+/**
+ * Contrôleur web pour la gestion des patients
+ *
+ * Suppression complète des FeignExceptions (découplage libs)
+ * Gestion uniquement d'exceptions Business métier
+ * Architecture prête pour changement de librairie HTTP
+ * 
+ * Ne connais pas Feign : utilise PatientService qui utilise PatientRepository.
+ * Facilite les évolutions futures (Feign → WebClient → RestTemplate).
+ */
 @Controller
 @RequestMapping("/patients")
 @RequiredArgsConstructor
@@ -51,8 +61,16 @@ public class PatientController {
         try {
             patientService.savePatient(patientFormDto);
             redirectAttributes.addFlashAttribute("successMessage", "Patient ajouté avec succès !");
-        } catch (FeignException e) {
-            handleFeignException(e, result, model);
+            
+        } catch (PatientValidationException e) {
+            log.warn("Erreur de validation lors de l'ajout du patient: {}", e.getMessage());
+            handleValidationException(e, result, model);
+            model.addAttribute("pageTitle", "Ajouter un patient");
+            return "patients/form";
+            
+        } catch (PatientServiceException e) {
+            log.error("Erreur technique lors de l'ajout du patient: status={}", e.getStatusCode(), e);
+            model.addAttribute("errorMessage", "Erreur technique : " + e.getMessage());
             model.addAttribute("pageTitle", "Ajouter un patient");
             return "patients/form";
         }
@@ -61,9 +79,16 @@ public class PatientController {
 
     @GetMapping("/update/{id}")
     public String showUpdateForm(@PathVariable("id") Long id, Model model) {
-        model.addAttribute("patientFormDto", patientService.getPatientFormById(id));
-        model.addAttribute("pageTitle", "Modifier le patient");
-        return "patients/form";
+        try {
+            model.addAttribute("patientFormDto", patientService.getPatientFormById(id));
+            model.addAttribute("pageTitle", "Modifier le patient");
+            return "patients/form";
+            
+        } catch (PatientNotFoundException e) {
+            log.warn("Tentative de modification d'un patient inexistant: ID={}", id);
+            model.addAttribute("errorMessage", e.getMessage());
+            return "redirect:/patients";
+        }
     }
 
     @PostMapping("/update/{id}")
@@ -87,11 +112,24 @@ public class PatientController {
             // Message de succès via flash attribute
             redirectAttributes.addFlashAttribute("successMessage", "Patient modifié avec succès !");
             
-        } catch (FeignException e) {
-            log.error("=== ERREUR FEIGN UPDATE ===", e);
-            handleFeignException(e, result, model);
+        } catch (PatientNotFoundException e) {
+            log.warn("Tentative de modification d'un patient inexistant: ID={}", id);
+            model.addAttribute("errorMessage", e.getMessage());
             model.addAttribute("pageTitle", "Modifier le patient");
             return "patients/form";
+            
+        } catch (PatientValidationException e) {
+            log.warn("Erreur de validation lors de la modification du patient ID={}: {}", id, e.getMessage());
+            handleValidationException(e, result, model);
+            model.addAttribute("pageTitle", "Modifier le patient");
+            return "patients/form";
+            
+        } catch (PatientServiceException e) {
+            log.error("Erreur technique lors de la modification du patient ID={}: status={}", id, e.getStatusCode(), e);
+            model.addAttribute("errorMessage", "Erreur technique : " + e.getMessage());
+            model.addAttribute("pageTitle", "Modifier le patient");
+            return "patients/form";
+            
         } catch (Exception e) {
             log.error("=== ERREUR GENERALE UPDATE ===", e);
             model.addAttribute("errorMessage", "Erreur inattendue: " + e.getMessage());
@@ -102,25 +140,41 @@ public class PatientController {
         return "redirect:/patients";
     }
 
-    private void handleFeignException(FeignException e, BindingResult result, Model model) {
-        log.error("Erreur Feign lors de l'enregistrement du patient: status={}, body={}", e.status(), e.contentUTF8(), e);
-        if ((e.status() == 400 || e.status() == 422) && e.contentUTF8() != null && !e.contentUTF8().isBlank()) {
+    /**
+     * Gère les exceptions de validation métier
+     * 
+     * Découplée de FeignException : utilise les détails JSON préservés
+     * par la couche Repository lors de la transformation des exceptions.
+     */
+    private void handleValidationException(PatientValidationException e, BindingResult result, Model model) {
+        log.debug("Gestion des erreurs de validation patient: {}", e.getMessage());
+        
+        String validationDetails = e.getValidationDetails();
+        
+        // Si on a les détails JSON, on tente de les parser pour afficher les erreurs spécifiques
+        if (validationDetails != null && !validationDetails.isBlank()) {
             try {
-                ApiErrorResponse errorResponse = objectMapper.readValue(e.contentUTF8(), ApiErrorResponse.class);
+                ApiErrorResponse errorResponse = objectMapper.readValue(validationDetails, ApiErrorResponse.class);
+                
+                // Ajout des erreurs de champs spécifiques
                 if (errorResponse.getErrors() != null) {
                     errorResponse.getErrors().forEach(fieldError -> {
                         result.addError(new FieldError("patientFormDto", fieldError.getField(), fieldError.getMessage()));
                     });
                 }
+                
+                // Message global si pas d'erreurs de champs
                 if (errorResponse.getMessage() != null && result.getGlobalErrorCount() == 0 && result.getFieldErrorCount() == 0) {
                     model.addAttribute("errorMessage", errorResponse.getMessage());
                 }
+                
             } catch (JsonProcessingException jsonException) {
-                log.error("Erreur parsing JSON de l'erreur Feign", jsonException);
-                model.addAttribute("errorMessage", "Une erreur inattendue est survenue.");
+                log.warn("Impossible de parser les détails de validation JSON", jsonException);
+                model.addAttribute("errorMessage", e.getMessage());
             }
         } else {
-            model.addAttribute("errorMessage", "Une erreur technique est survenue: " + e.getMessage());
+            // Fallback : message simple
+            model.addAttribute("errorMessage", e.getMessage());
         }
     }
 }
