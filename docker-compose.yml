@@ -76,6 +76,10 @@ services:
 
       # Virtual threads Java 21
       SPRING_THREADS_VIRTUAL_ENABLED: "true"
+      
+      # Credentials Basic Auth pour validation Gateway
+      AUTH_USERNAME: mediscreen-frontend  
+      AUTH_PASSWORD: medipass123
     depends_on:
       mysql-db:
         condition: service_healthy
@@ -100,6 +104,10 @@ services:
     environment:
       SPRING_APPLICATION_NAME: gateway-service
       SPRING_PROFILES_ACTIVE: docker
+
+      # Credentials Basic Auth Base64 pour authentification inter-services
+      AUTH_USERNAME_B64: bWVkaXNjcmVlbi1mcm9udGVuZA==  # mediscreen-frontend
+      AUTH_PASSWORD_B64: bWVkaXBhc3MxMjM=              # medipass123
 
       # Configuration des routes (mise à jour au fur et à mesure des sprints)
       SPRING_CLOUD_GATEWAY_ROUTES_0_ID: patient-service-route
@@ -134,6 +142,10 @@ services:
 
       # URL du Gateway
       FEIGN_CLIENT_URL: http://gateway-service:8888
+
+      # Credentials Basic Auth pour authentification inter-services
+      AUTH_USERNAME: mediscreen-frontend
+      AUTH_PASSWORD: medipass123
 
       # Configuration des logs
       LOGGING_LEVEL_COM_MEDISCREEN_FRONTEND_CLIENT_PATIENTAPICLIENT: DEBUG

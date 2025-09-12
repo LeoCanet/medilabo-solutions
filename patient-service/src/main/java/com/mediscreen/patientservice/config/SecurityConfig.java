@@ -5,7 +5,14 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.core.userdetails.User;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
@@ -19,10 +26,16 @@ import java.util.List;
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
+    
+    @Value("${mediscreen.auth.username:mediscreen-frontend}")
+    private String username;
+    
+    @Value("${mediscreen.auth.password:medipass123}")
+    private String password;
 
     /**
      * Configuration de la chaîne de filtres de sécurité
-     * Utilise les nouvelles fonctionnalités de Spring Security 6
+     * Validation Basic Auth pour empêcher l'accès direct au service
      */
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -37,10 +50,14 @@ public class SecurityConfig {
             .sessionManagement(session ->
                 session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
-            // Configuration des autorisations avec Spring Security 6
+            // Configuration des autorisations - Basic Auth requis
             .authorizeHttpRequests(authorize -> authorize
-                    .anyRequest().permitAll()
+                    .requestMatchers("/actuator/**", "/v3/api-docs/**", "/swagger-ui/**").permitAll()
+                    .anyRequest().authenticated()
             )
+            
+            // Activation de l'authentification HTTP Basic
+            .httpBasic(basic -> {})
 
             // Configuration des headers de sécurité
             .headers(headers -> headers
@@ -54,10 +71,31 @@ public class SecurityConfig {
 
             .build();
     }
+    
+    /**
+     * Configuration des utilisateurs autorisés pour Basic Auth
+     */
+    @Bean
+    public UserDetailsService userDetailsService() {
+        UserDetails serviceUser = User.builder()
+                .username(username)
+                .password(passwordEncoder().encode(password))
+                .roles("SERVICE")
+                .build();
+        
+        return new InMemoryUserDetailsManager(serviceUser);
+    }
+    
+    /**
+     * Encodeur de mots de passe
+     */
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
 
     /**
-     * Configuration CORS pour permettre les appels depuis le frontend
-     * Java 21 optimisé avec Virtual Threads
+     * Configuration CORS pour permettre les appels depuis le Gateway
      */
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {

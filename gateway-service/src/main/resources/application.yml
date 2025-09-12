@@ -24,3 +24,10 @@ logging:
   level:
     org.springframework.cloud.gateway: DEBUG
     reactor.netty: DEBUG
+
+# Configuration Basic Auth (credentials Base64 injectés au Docker)
+mediscreen:
+  auth:
+    username: ${AUTH_USERNAME_B64:bWVkaXNjcmVlbi1mcm9udGVuZA==}  # Base64: mediscreen-frontend
+    password: ${AUTH_PASSWORD_B64:bWVkaXBhc3MxMjM=}              # Base64: medipass123
+
