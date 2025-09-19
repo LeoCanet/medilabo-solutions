@@ -1,4 +1,4 @@
-package com.mediscreen.patientservice.config;
+package com.mediscreen.notesservice.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -21,7 +21,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import java.util.List;
 
 /**
- * Configuration de sécurité pour le microservice Patient
+ * Configuration de sécurité pour le microservice Notes
  */
 @Configuration
 @EnableWebSecurity

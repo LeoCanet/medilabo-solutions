@@ -22,10 +22,10 @@ import java.util.Base64;
 @Component
 public class BasicAuthFeignInterceptor implements RequestInterceptor {
     
-    @Value("${mediscreen.auth.username:}")
+    @Value("${mediscreen.auth.username}")
     private String username;
-    
-    @Value("${mediscreen.auth.password:}")
+
+    @Value("${mediscreen.auth.password}")
     private String password;
     
     @Override

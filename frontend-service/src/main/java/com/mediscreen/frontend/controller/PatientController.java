@@ -140,6 +140,7 @@ public class PatientController {
         return "redirect:/patients";
     }
 
+
     /**
      * Gère les exceptions de validation métier
      * 

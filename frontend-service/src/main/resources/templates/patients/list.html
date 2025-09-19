@@ -48,8 +48,26 @@
             <td th:text="${patient.genre}">F</td>
             <td th:text="${patient.telephone}">100-222-3333</td>
             <td>
-                <a th:href="@{/patients/update/{id}(id=${patient.id})}" class="btn btn-sm btn-warning">Modifier</a>
-                
+                <div class="btn-group" role="group" aria-label="Actions patient">
+                    <a th:href="@{/patients/update/{id}(id=${patient.id})}"
+                       class="btn btn-sm btn-outline-primary"
+                       title="Modifier les informations patient">
+                        <i class="fas fa-edit"></i> Modifier
+                    </a>
+                    <a th:href="@{/patients/{id}/notes(id=${patient.id})}"
+                       class="btn btn-sm btn-outline-info"
+                       title="Gérer les notes médicales">
+                        <i class="fas fa-notes-medical"></i> Notes
+                    </a>
+                    <!-- Sprint 3 : Future action Évaluation -->
+                    <!--
+                    <a th:href="@{/patients/{id}/assessment(id=${patient.id})}"
+                       class="btn btn-sm btn-outline-success"
+                       title="Évaluer le risque diabète">
+                        <i class="fas fa-chart-line"></i> Évaluation
+                    </a>
+                    -->
+                </div>
             </td>
         </tr>
         <tr th:if="${#lists.isEmpty(patients)}">

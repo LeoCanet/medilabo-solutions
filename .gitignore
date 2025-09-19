@@ -1,2 +1,7 @@
 # Ignorer le dossier contenant les documents du projet OpenClassrooms
 documents_cles/
+
+# Variables d'environnement sensibles - NE JAMAIS COMMITER
+.env
+.env.local
+.env.*.local

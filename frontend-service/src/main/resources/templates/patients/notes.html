@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org">
+
+<head th:replace="~{layout :: head('Notes Médicales')}">
+    <title>Notes Médicales</title>
+</head>
+
+<body>
+
+<nav th:replace="~{layout :: navbar}"></nav>
+
+<main class="container">
+    <!-- Breadcrumb Navigation -->
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item">
+                <a th:href="@{/patients}">
+                    <i class="fas fa-users"></i> Patients
+                </a>
+            </li>
+            <li class="breadcrumb-item active" aria-current="page">
+                <i class="fas fa-notes-medical"></i>
+                Notes - <span th:text="${patient.prenom} + ' ' + ${patient.nom}">Patient</span>
+            </li>
+        </ol>
+    </nav>
+
+    <!-- Patient Context Card -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h4 class="mb-1">
+                        <i class="fas fa-user-md text-primary"></i>
+                        <span th:text="${patient.prenom} + ' ' + ${patient.nom}">Patient</span>
+                        <small class="text-muted"
+                               th:text="'(' + ${patient.genre} + ', ' + ${#temporals.format(patient.dateNaissance, 'dd/MM/yyyy')} + ')'">
+                            (Genre, Date)
+                        </small>
+                    </h4>
+                    <p class="text-muted mb-0">
+                        <i class="fas fa-notes-medical"></i>
+                        <span th:text="${notesCount}">0</span> note(s) médicale(s) au dossier
+                    </p>
+                </div>
+                <div class="col-md-4 text-end">
+                    <div class="btn-group" role="group">
+                        <a th:href="@{/patients/update/{id}(id=${patient.id})}"
+                           class="btn btn-outline-primary"
+                           title="Modifier les informations patient">
+                            <i class="fas fa-edit"></i> Modifier Patient
+                        </a>
+                        <!-- Sprint 3 : Future action Évaluation -->
+                        <a th:href="@{/patients/{id}/assessment(id=${patient.id})}"
+                           class="btn btn-outline-success"
+                           title="Évaluer le risque diabète"
+                           style="display: none;">
+                            <i class="fas fa-chart-line"></i> Évaluation
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Messages Flash -->
+    <div th:if="${successMessage}" class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="fas fa-check-circle"></i>
+        <span th:text="${successMessage}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+
+    <div th:if="${errorMessage}" class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="fas fa-exclamation-triangle"></i>
+        <span th:text="${errorMessage}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+
+    <!-- User Story 1 : Vue historique du patient (notes) -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">
+                <i class="fas fa-history text-info"></i>
+                Historique des Notes Médicales
+                <span class="badge bg-secondary" th:text="${notesCount}">0</span>
+            </h5>
+        </div>
+        <div class="card-body">
+            <!-- Message si aucune note -->
+            <div th:if="${#lists.isEmpty(notes)}" class="text-center text-muted py-4">
+                <i class="fas fa-info-circle fa-2x mb-3"></i>
+                <p class="mb-0">Aucune note médicale pour ce patient.</p>
+                <small>Utilisez le formulaire ci-dessous pour ajouter la première note.</small>
+            </div>
+
+            <!-- Affichage des notes existantes -->
+            <div th:each="note, iterStat : ${notes}"
+                 class="border-start border-primary border-3 ps-3 mb-3">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <div>
+                        <strong th:text="${note.patient}" class="text-primary">Patient</strong>
+                        <span class="badge bg-light text-dark ms-2"
+                              th:text="'Note #' + ${iterStat.count}">Note #1</span>
+                    </div>
+                    <small class="text-muted"
+                           th:text="${#temporals.format(note.createdDate, 'dd/MM/yyyy HH:mm')}">
+                        Date
+                    </small>
+                </div>
+                <div class="note-content bg-light p-3 rounded"
+                     th:text="${note.note}"
+                     style="white-space: pre-wrap; font-family: inherit;">
+                    Note content
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- User Story 2 : Ajouter une note à l'historique du patient -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">
+                <i class="fas fa-plus-circle text-success"></i>
+                Ajouter une Note Médicale
+            </h5>
+        </div>
+        <div class="card-body">
+            <form th:action="@{/patients/{patientId}/notes/add(patientId=${patient.id})}"
+                  method="post"
+                  th:object="${noteCreateDto}">
+
+                <!-- Champs cachés pour les données patient -->
+                <input type="hidden" th:field="*{patId}" th:value="${patient.id}"/>
+                <input type="hidden" th:field="*{patient}" th:value="${patient.prenom + ' ' + patient.nom}"/>
+
+                <!-- Informations patient (lecture seule) -->
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Patient</label>
+                        <input type="text"
+                               class="form-control-plaintext"
+                               th:value="${patient.prenom + ' ' + patient.nom}"
+                               readonly>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Date</label>
+                        <input type="text"
+                               class="form-control-plaintext"
+                               th:value="${#temporals.format(#temporals.createNow(), 'dd/MM/yyyy HH:mm')}"
+                               readonly>
+                    </div>
+                </div>
+
+                <!-- Champ note -->
+                <div class="mb-3">
+                    <label for="note" class="form-label">
+                        Note d'Observation Médicale <span class="text-danger">*</span>
+                    </label>
+                    <textarea id="note"
+                             th:field="*{note}"
+                             class="form-control"
+                             rows="6"
+                             placeholder="Saisissez votre note d'observation médicale...&#10;&#10;Exemples de terminologie médicale :&#10;- Hémoglobine A1C, Microalbumine&#10;- Taille, Poids, Cholestérol&#10;- Fumeur/Fumeuse, Anormal, Vertiges&#10;- Rechute, Réaction, Anticorps"
+                             th:classappend="${#fields.hasErrors('note')} ? 'is-invalid' : ''"
+                             required></textarea>
+                    <div class="form-text">
+                        <i class="fas fa-info-circle"></i>
+                        Les formats d'origine (nouvelles lignes, espacement, etc.) seront conservés.
+                        Aucune limite de taille pour les observations médicales.
+                    </div>
+                    <div class="invalid-feedback" th:if="${#fields.hasErrors('note')}" th:errors="*{note}"></div>
+                </div>
+
+                <!-- Boutons d'action -->
+                <div class="d-flex justify-content-between">
+                    <a th:href="@{/patients}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left"></i> Retour à la Liste
+                    </a>
+                    <div>
+                        <button type="submit" class="btn btn-success">
+                            <i class="fas fa-save"></i> Enregistrer la Note
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</main>
+
+<footer th:replace="~{layout :: footer}"></footer>
+
+</body>
+</html>

@@ -1,9 +1,8 @@
 # syntax=docker/dockerfile:1
-# Multi-stage Dockerfile pour Patient Service
-# Stage 1: Build avec Maven (Maven natif, pas de mvnw)
+# Multi-stage Dockerfile pour Notes Service
+# Stage 1: Build avec Maven (Maven natif, cache m2)
 FROM maven:3.9.6-eclipse-temurin-21 AS builder
 WORKDIR /app
-
 
 # Cache des dépendances
 COPY pom.xml .
@@ -25,7 +24,7 @@ RUN set -eux; \
 FROM eclipse-temurin:21-jre-jammy
 
 LABEL maintainer="mediscreen-team"
-LABEL description="Patient Service - Microservice de gestion des patients"
+LABEL description="Notes Service - Microservice de gestion des notes médicales"
 
 ENV APP_HOME=/app
 ENV APP_USER=mediscreen
@@ -40,7 +39,7 @@ RUN apt-get update \
 
 WORKDIR ${APP_HOME}
 
-# Copier le jar avec les bons droits sans couche chown dédiée
+# Copier le jar avec les bons droits
 COPY --chown=${APP_USER}:${APP_USER} --from=builder /app/app.jar app.jar
 
 # Basculer sur utilisateur non-root
@@ -48,10 +47,10 @@ USER ${APP_USER}
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD curl -fsS http://localhost:8081/actuator/health || exit 1
+    CMD curl -fsS http://localhost:8082/actuator/health || exit 1
 
 # Exposition du port
-EXPOSE 8081
+EXPOSE 8082
 
 # Point d'entrée
 ENTRYPOINT ["java", "-jar", "app.jar"]

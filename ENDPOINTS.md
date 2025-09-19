@@ -1,64 +1,201 @@
 # Mediscreen Microservices Endpoints Documentation
 
-This document summarizes the key endpoints for each microservice in the Mediscreen application.
+Documentation complète des endpoints pour l'architecture microservices Mediscreen (Sprint 1 + Sprint 2).
+
+## Architecture Globale
+
+```
+Frontend (8080) → Gateway (8888) → Patient Service (8081) → MySQL (3307)
+                                 ↘ Notes Service (8082) → MongoDB (27018)
+```
 
 ## 1. Patient Service (Port: 8081)
 
-The Patient Service exposes the core REST API for managing patient data.
+Microservice de gestion des données démographiques des patients avec base MySQL normalisée 3NF.
 
 *   **Base URL:** `http://localhost:8081`
 *   **API Base Path:** `/api/v1/patients`
+*   **Sécurité:** Basic Auth requis (credentials spécifiques patient)
 
 ### API Endpoints
 
 | Method | Path | Description |
 |---|---|---|
-| `POST` | `/api/v1/patients` | Crée un nouveau patient. |
-| `GET` | `/api/v1/patients/{id}` | Récupère un patient par son ID. |
 | `GET` | `/api/v1/patients` | Récupère tous les patients. |
+| `GET` | `/api/v1/patients/{id}` | Récupère un patient par son ID. |
+| `POST` | `/api/v1/patients` | Crée un nouveau patient. |
 | `PUT` | `/api/v1/patients/{id}` | Met à jour complètement un patient. |
 
 ### API Documentation (Swagger UI)
 
-*   **URL:** `http://localhost:8081/swagger-ui.html` (or `http://localhost:8081/swagger-ui/index.html`)
-    *   *Note: The exact path might vary slightly based on SpringDoc OpenAPI configuration.*
+*   **URL:** `http://localhost:8081/swagger-ui.html`
 
 ### Monitoring (Spring Boot Actuator)
 
 *   **URL:** `http://localhost:8081/actuator`
+*   **Health Check:** `http://localhost:8081/actuator/health`
 
-## 2. Gateway Service (Port: 8888)
+## 2. Notes Service (Port: 8082) ✅ Sprint 2
 
-The Gateway Service acts as the single entry point for the application, routing requests to the appropriate microservices.
+Microservice de gestion des notes médicales avec base NoSQL MongoDB.
+
+*   **Base URL:** `http://localhost:8082`
+*   **API Base Path:** `/api/v1/notes`
+*   **Sécurité:** Basic Auth requis (credentials spécifiques notes)
+
+### API Endpoints
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/api/v1/notes/patient/{patientId}` | Récupère toutes les notes d'un patient. |
+| `GET` | `/api/v1/notes/{id}` | Récupère une note par son ID. |
+| `POST` | `/api/v1/notes` | Crée une nouvelle note médicale. |
+
+### API Documentation (Swagger UI)
+
+*   **URL:** `http://localhost:8082/swagger-ui.html`
+
+### Monitoring (Spring Boot Actuator)
+
+*   **URL:** `http://localhost:8082/actuator`
+*   **Health Check:** `http://localhost:8082/actuator/health`
+
+## 3. Gateway Service (Port: 8888)
+
+Service de routage intelligent avec sécurité Basic Auth différenciée par microservice.
 
 *   **Base URL:** `http://localhost:8888`
+*   **Sécurité:** Basic Auth frontend requis + injection automatique credentials backend
 
-### Routing Rules
+### Routing Rules avec Tokens Différenciés
 
-| Method | Path (Gateway) | Routes To | Description |
-|---|---|---|---|
-| `ANY` | `/api/v1/patients/**` | `http://127.0.0.1:8081` | Routes all patient-related API calls to the Patient Service. |
+| Method | Path (Gateway) | Routes To | Credentials Injectés | Description |
+|---|---|---|---|---|
+| `ANY` | `/api/v1/patients/**` | `patient-service:8081` | `mediscreen-patient:patient_secure_2024` | Routes vers Patient Service. |
+| `ANY` | `/api/v1/notes/**` | `notes-service:8082` | `mediscreen-notes:notes_secure_2024` | Routes vers Notes Service. |
+
+### Filtres de Sécurité
+
+- **Frontend → Gateway:** `mediscreen-frontend:medipass123`
+- **Gateway → Patient Service:** Injection automatique credentials patient
+- **Gateway → Notes Service:** Injection automatique credentials notes
 
 ### Monitoring (Spring Boot Actuator)
 
 *   **URL:** `http://localhost:8888/actuator`
+*   **Routes Info:** `http://localhost:8888/actuator/gateway/routes`
 
-## 3. Frontend Service (Port: 8080)
+## 4. Frontend Service (Port: 8080)
 
-The Frontend Service provides the web-based user interface for the application.
+Interface web Thymeleaf avec architecture découplée et pages spécialisées.
 
 *   **Base URL:** `http://localhost:8080`
+*   **Authentification:** Automatique via Feign interceptor
 
-### Web Pages / Endpoints
+### Pages Patients (Sprint 1)
 
 | Method | Path | Description |
 |---|---|---|
-| `GET` | `/patients` | Affiche la liste de tous les patients (page d'accueil). |
-| `GET` | `/patients/add` | Affiche le formulaire d'ajout d'un nouveau patient. |
-| `POST` | `/patients/save` | Traite la soumission du formulaire pour la création ou la mise à jour d'un patient. |
-| `GET` | `/patients/update/{id}` | Affiche le formulaire de modification d'un patient existant. |
-| `GET` | `/patients/delete/{id}` | Supprime un patient. |
+| `GET` | `/patients` | Liste de tous les patients (page d'accueil). |
+| `GET` | `/patients/add` | Formulaire d'ajout d'un nouveau patient. |
+| `POST` | `/patients/save` | Traitement création/modification patient. |
+| `GET` | `/patients/update/{id}` | Formulaire de modification d'un patient existant. |
+
+### Pages Notes (Sprint 2) ✅
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/patients/{patientId}/notes` | Page dédiée notes médicales d'un patient. |
+| `POST` | `/patients/{patientId}/notes/add` | Ajout d'une nouvelle note médicale. |
+
+### Navigation Architecture
+
+```
+/patients (liste) → /patients/{id}/notes (historique + formulaire ajout)
+                 ↘ /patients/update/{id} (modification patient)
+```
 
 ### Monitoring (Spring Boot Actuator)
 
 *   **URL:** `http://localhost:8080/actuator`
+
+## 5. Assessment Service (Port: 8083) ⏳ Sprint 3
+
+Service d'évaluation du risque diabète (en préparation).
+
+*   **Base URL:** `http://localhost:8083`
+*   **API Base Path:** `/api/v1/assess`
+*   **Sécurité:** Basic Auth requis (credentials spécifiques assessment)
+
+### API Endpoints (Prévus)
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/api/v1/assess/{patientId}` | Évalue le risque diabète d'un patient. |
+
+## Bases de Données
+
+### MySQL (Patient Service) - Port 3307
+
+*   **Base:** `mediscreen_patients`
+*   **Tables:** `patients` (normalisation 3NF)
+*   **Accès:** `http://localhost:3307`
+
+### MongoDB (Notes Service) - Port 27018
+
+*   **Base:** `mediscreen_notes`
+*   **Collection:** `notes`
+*   **Accès:** `mongodb://localhost:27018`
+
+## Tests de Connectivité
+
+### Tests API Direct (avec Basic Auth)
+
+```bash
+# Patient Service
+curl -u "mediscreen-patient:patient_secure_2024" http://localhost:8081/api/v1/patients
+
+# Notes Service
+curl -u "mediscreen-notes:notes_secure_2024" http://localhost:8082/api/v1/notes/patient/1
+```
+
+### Tests via Gateway
+
+```bash
+# Via Gateway (injection automatique credentials)
+curl -u "mediscreen-frontend:medipass123" http://localhost:8888/api/v1/patients
+curl -u "mediscreen-frontend:medipass123" http://localhost:8888/api/v1/notes/patient/1
+```
+
+### Tests Frontend End-to-End
+
+```bash
+# Interface web complète
+curl http://localhost:8080/patients
+curl http://localhost:8080/patients/1/notes
+```
+
+## Configuration Docker
+
+Services déployés via `docker-compose.yml` :
+
+- **mysql-db** (mediscreen-mysql) : Port 3307
+- **mongodb** (mediscreen-mongo) : Port 27018
+- **patient-service** (mediscreen-patient-service) : Port 8081
+- **notes-service** (mediscreen-notes-service) : Port 8082
+- **gateway-service** (mediscreen-gateway) : Port 8888
+- **frontend-service** (mediscreen-frontend) : Port 8080
+
+### Health Checks Complets
+
+```bash
+# Tous les services
+curl http://localhost:8080/actuator/health  # Frontend
+curl http://localhost:8888/actuator/health  # Gateway
+curl http://localhost:8081/actuator/health  # Patient
+curl http://localhost:8082/actuator/health  # Notes
+```
+
+---
+
+**Architecture microservices complète Sprint 1 + Sprint 2 avec sécurité Basic Auth différenciée et pattern Repository découplé.**

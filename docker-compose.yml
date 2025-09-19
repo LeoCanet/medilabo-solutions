@@ -1,7 +1,7 @@
 # Docker Compose - Mediscreen Application
 # Architecture microservices complète avec bases de données
 
-version: '3.8'
+#version: '3.8'
 
 services:
   # Base de données MySQL pour le service Patient
@@ -10,10 +10,10 @@ services:
     container_name: mediscreen-mysql
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: mediscreen_patients
-      MYSQL_USER: mediscreen
-      MYSQL_PASSWORD: mediscreen123
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
       MYSQL_ROOT_HOST: "%"
     ports:
       - "3307:3306"  # Port externe différent pour éviter conflits
@@ -23,7 +23,7 @@ services:
     networks:
       - mediscreen-network
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -34,9 +34,9 @@ services:
     container_name: mediscreen-mongo
     restart: unless-stopped
     environment:
-      MONGO_INITDB_ROOT_USERNAME: admin
-      MONGO_INITDB_ROOT_PASSWORD: admin123
-      MONGO_INITDB_DATABASE: mediscreen_notes
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
+      MONGO_INITDB_DATABASE: ${MONGO_INITDB_DATABASE}
     ports:
       - "27018:27017"  # Port externe différent
     volumes:
@@ -62,8 +62,8 @@ services:
     environment:
       # Configuration de la base de données
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql-db:3306/mediscreen_patients?createDatabaseIfNotExist=true&useUnicode=true&characterEncoding=utf8&useSSL=false&allowPublicKeyRetrieval=true&allowMultiQueries=true
-      SPRING_DATASOURCE_USERNAME: mediscreen
-      SPRING_DATASOURCE_PASSWORD: mediscreen123
+      SPRING_DATASOURCE_USERNAME: ${MYSQL_USER}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD}
 
       # Configuration JPA/Hibernate
       SPRING_JPA_HIBERNATE_DDL_AUTO: update
@@ -76,10 +76,10 @@ services:
 
       # Virtual threads Java 21
       SPRING_THREADS_VIRTUAL_ENABLED: "true"
-      
-      # Credentials Basic Auth pour validation Gateway
-      AUTH_USERNAME: mediscreen-frontend  
-      AUTH_PASSWORD: medipass123
+
+      # Credentials Basic Auth spécifiques Patient Service
+      AUTH_USERNAME: ${AUTH_PATIENT_USERNAME}
+      AUTH_PASSWORD: ${AUTH_PATIENT_PASSWORD}
     depends_on:
       mysql-db:
         condition: service_healthy
@@ -105,19 +105,22 @@ services:
       SPRING_APPLICATION_NAME: gateway-service
       SPRING_PROFILES_ACTIVE: docker
 
-      # Credentials Basic Auth Base64 pour authentification inter-services
-      AUTH_USERNAME_B64: bWVkaXNjcmVlbi1mcm9udGVuZA==  # mediscreen-frontend
-      AUTH_PASSWORD_B64: bWVkaXBhc3MxMjM=              # medipass123
+      # Credentials Basic Auth différenciés par service
+      AUTH_USERNAME: ${AUTH_USERNAME}
+      AUTH_PASSWORD: ${AUTH_PASSWORD}
+      AUTH_PATIENT_USERNAME: ${AUTH_PATIENT_USERNAME}
+      AUTH_PATIENT_PASSWORD: ${AUTH_PATIENT_PASSWORD}
+      AUTH_NOTES_USERNAME: ${AUTH_NOTES_USERNAME}
+      AUTH_NOTES_PASSWORD: ${AUTH_NOTES_PASSWORD}
 
-      # Configuration des routes (mise à jour au fur et à mesure des sprints)
-      SPRING_CLOUD_GATEWAY_ROUTES_0_ID: patient-service-route
-      SPRING_CLOUD_GATEWAY_ROUTES_0_URI: http://patient-service:8081
-      SPRING_CLOUD_GATEWAY_ROUTES_0_PREDICATES_0: "Path=/api/v1/patients/**"
+      # Routes gérées par customRouteLocator dans SecurityConfig.java
 
       # Désactiver la vérification de compatibilité
       SPRING_CLOUD_COMPATIBILITY_VERIFIER_ENABLED: "false"
     depends_on:
       patient-service:
+        condition: service_healthy
+      notes-service:
         condition: service_healthy
     networks:
       - mediscreen-network
@@ -127,7 +130,7 @@ services:
       timeout: 10s
       retries: 3
 
-  # Service Frontend (Sprint 1) ✅
+  # Service Frontend (Sprint 1)
   frontend-service:
     build:
       context: ./frontend-service
@@ -144,8 +147,8 @@ services:
       FEIGN_CLIENT_URL: http://gateway-service:8888
 
       # Credentials Basic Auth pour authentification inter-services
-      AUTH_USERNAME: mediscreen-frontend
-      AUTH_PASSWORD: medipass123
+      AUTH_USERNAME: ${AUTH_USERNAME}
+      AUTH_PASSWORD: ${AUTH_PASSWORD}
 
       # Configuration des logs
       LOGGING_LEVEL_COM_MEDISCREEN_FRONTEND_CLIENT_PATIENTAPICLIENT: DEBUG
@@ -163,24 +166,47 @@ services:
       timeout: 10s
       retries: 3
 
-  # TODO: Notes Service (Sprint 2) - À développer
-  # notes-service:
-  #   build:
-  #     context: ./notes-service
-  #     dockerfile: Dockerfile
-  #   container_name: mediscreen-notes-service
-  #   restart: unless-stopped
-  #   ports:
-  #     - "8082:8082"
-  #   environment:
-  #     SPRING_DATA_MONGODB_URI: mongodb://admin:admin123@mongodb:27017/mediscreen_notes?authSource=admin
-  #     SPRING_APPLICATION_NAME: notes-service
-  #     SPRING_PROFILES_ACTIVE: docker
-  #   depends_on:
-  #     mongodb:
-  #       condition: service_healthy
-  #   networks:
-  #     - mediscreen-network
+  # Service Notes (Sprint 2)
+  notes-service:
+    build:
+      context: ./notes-service
+      dockerfile: Dockerfile
+    container_name: mediscreen-notes-service
+    restart: unless-stopped
+    ports:
+      - "8082:8082"
+    environment:
+      # Configuration MongoDB
+      SPRING_DATA_MONGODB_URI: mongodb://${MYSQL_USER}:${MYSQL_PASSWORD}@mongodb:27017/mediscreen_notes?authSource=mediscreen_notes
+      SPRING_DATA_MONGODB_DATABASE: mediscreen_notes
+
+      # Configuration de l'application
+      SPRING_APPLICATION_NAME: notes-service
+      SPRING_PROFILES_ACTIVE: docker
+
+      # Virtual threads Java 21
+      SPRING_THREADS_VIRTUAL_ENABLED: "true"
+
+      # Credentials Basic Auth spécifiques Notes Service
+      AUTH_USERNAME: ${AUTH_NOTES_USERNAME}
+      AUTH_PASSWORD: ${AUTH_NOTES_PASSWORD}
+
+      # Configuration des logs
+      LOGGING_LEVEL_COM_MEDISCREEN_NOTESSERVICE: DEBUG
+
+      # Désactiver la vérification de compatibilité Spring Cloud
+      SPRING_CLOUD_COMPATIBILITY_VERIFIER_ENABLED: "false"
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - mediscreen-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8082/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
 
   # TODO: Assessment Service (Sprint 3) - À développer
   # assessment-service:

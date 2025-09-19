@@ -15,8 +15,8 @@
             <div th:if="${errorMessage}" class="alert alert-danger" role="alert">
                 <p th:text="${errorMessage}"></p>
             </div>
-            <div th:with="formActionUrl = (${patientFormDto.id == null} ? @{/patients/add} : @{/patients/update/{id}(id=${patientFormDto.id})})">
-                <form th:action="${formActionUrl}" th:object="${patientFormDto}" method="post">
+            <div th:with="formActionUrl = ${patientFormDto.id == null ? '/patients/add' : '/patients/update/' + patientFormDto.id}">
+                <form th:action="@{${formActionUrl}}" th:object="${patientFormDto}" method="post">
                 <input type="hidden" th:field="*{id}"/>
 
                 <div class="mb-3">
@@ -82,12 +82,7 @@
                 <button type="submit" class="btn btn-primary">Enregistrer les modifications</button>
                 <a th:href="@{/patients}" class="btn btn-secondary">Annuler</a>
             </form>
-
-            <hr/>
-            <h3>Test de Soumission</h3>
-            <form action="/patients" method="get">
-                <button type="submit">Bouton de Test</button>
-            </form>
+            </div>
 
         </div>
     </div>
