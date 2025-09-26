@@ -1,11 +1,11 @@
-package com.mediscreen.patientservice;
+package com.mediscreen.notesservice;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.TestPropertySource;
 
 /**
- * Test de chargement du contexte Spring Boot pour Patient Service.
+ * Test de chargement du contexte Spring Boot pour Notes Service.
  *
  * Ce test vérifie que l'application peut démarrer correctement avec
  * la configuration de test. Les variables AUTH_USERNAME/AUTH_PASSWORD
@@ -17,12 +17,11 @@ import org.springframework.test.context.TestPropertySource;
  * donc il faut fournir des valeurs même si elles ne sont pas utilisées.
  */
 @SpringBootTest
-@org.springframework.test.context.ActiveProfiles("test")
 @TestPropertySource(properties = {
     "AUTH_USERNAME=test-user",    // Credentials factices pour éviter erreurs placeholder
     "AUTH_PASSWORD=test-pass"     // Ces valeurs ne sont jamais vérifiées
 })
-class PatientServiceApplicationTests {
+class NotesServiceApplicationTests {
 
 	/**
 	 * Vérifie que le contexte Spring Boot se charge correctement.
