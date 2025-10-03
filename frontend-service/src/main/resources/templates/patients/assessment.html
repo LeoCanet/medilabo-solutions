@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Évaluation Risque Diabète - Mediscreen</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .risk-badge {
+            font-size: 1.5rem;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            display: inline-block;
+            margin: 1rem 0;
+        }
+        .risk-description {
+            font-size: 1.1rem;
+            color: #6c757d;
+            margin-top: 0.5rem;
+        }
+        .patient-info-card {
+            background-color: #f8f9fa;
+            border-left: 4px solid #0d6efd;
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+        }
+    </style>
+</head>
+<body>
+<div class="container mt-4">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a th:href="@{/patients}">Patients</a></li>
+            <li class="breadcrumb-item">
+                <span th:text="${patient.prenom() + ' ' + patient.nom()}">Patient</span>
+            </li>
+            <li class="breadcrumb-item active" aria-current="page">Évaluation Risque Diabète</li>
+        </ol>
+    </nav>
+
+    <!-- Titre -->
+    <h2>Évaluation du Risque Diabète</h2>
+
+    <!-- Informations patient -->
+    <div class="patient-info-card">
+        <h5>
+            <span th:text="${patient.prenom() + ' ' + patient.nom()}">Nom Patient</span>
+            <small class="text-muted">
+                (ID: <span th:text="${patient.id()}">1</span>)
+            </small>
+        </h5>
+        <p class="mb-1">
+            <strong>Âge:</strong> <span th:text="${assessment.age()}">0</span> ans |
+            <strong>Genre:</strong> <span th:text="${patient.genre()}">M</span>
+        </p>
+    </div>
+
+    <!-- Résultat évaluation -->
+    <div class="card">
+        <div class="card-body text-center">
+            <h4 class="card-title mb-4">Niveau de Risque Détecté</h4>
+
+            <!-- Badge risque avec couleur dynamique -->
+            <div>
+                <span th:classappend="${'badge bg-' + assessment.riskLevel().getCssClass() + ' risk-badge'}"
+                      th:text="${assessment.riskLevel().getCode()}">
+                    None
+                </span>
+            </div>
+
+            <!-- Description -->
+            <p class="risk-description" th:text="${assessment.riskLevel().getDescription()}">
+                Aucun risque
+            </p>
+
+            <!-- Explications selon le niveau -->
+            <div class="alert mt-4" th:classappend="${'alert-' + assessment.riskLevel().getCssClass()}" role="alert">
+                <div th:if="${assessment.riskLevel().name() == 'NONE'}">
+                    <strong>Aucun risque détecté.</strong><br>
+                    Le patient ne présente pas de facteurs de risque identifiés dans ses notes médicales.
+                </div>
+                <div th:if="${assessment.riskLevel().name() == 'BORDERLINE'}">
+                    <strong>Risque limité.</strong><br>
+                    Le patient présente quelques facteurs de risque. Surveillance recommandée.
+                </div>
+                <div th:if="${assessment.riskLevel().name() == 'IN_DANGER'}">
+                    <strong>Patient en danger!</strong><br>
+                    Plusieurs facteurs de risque identifiés. Consultation médicale recommandée rapidement.
+                </div>
+                <div th:if="${assessment.riskLevel().name() == 'EARLY_ONSET'}">
+                    <strong>Risque d'apparition précoce!</strong><br>
+                    Nombreux facteurs de risque détectés. Intervention médicale urgente recommandée.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="mt-4">
+        <a th:href="@{/patients/{id}/update(id=${patient.id()})}" class="btn btn-primary">
+            Modifier Patient
+        </a>
+        <a th:href="@{/patients/{id}/notes(id=${patient.id()})}" class="btn btn-secondary">
+            Voir Notes
+        </a>
+        <a th:href="@{/patients}" class="btn btn-outline-secondary">
+            Retour à la liste
+        </a>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

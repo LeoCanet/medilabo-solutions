@@ -15,6 +15,10 @@ spring:
           uri: http://notes-service:8082
           predicates:
             - Path=/api/v1/notes/**
+        - id: assessment-service-route
+          uri: http://assessment-service:8083
+          predicates:
+            - Path=/api/v1/assess/**
     compatibility-verifier:
       enabled: false
 
@@ -41,4 +45,7 @@ mediscreen:
     notes:
       username: ${AUTH_NOTES_USERNAME}
       password: ${AUTH_NOTES_PASSWORD}
+    assessment:
+      username: ${AUTH_ASSESSMENT_USERNAME}
+      password: ${AUTH_ASSESSMENT_PASSWORD}
 

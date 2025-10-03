@@ -112,6 +112,8 @@ services:
       AUTH_PATIENT_PASSWORD: ${AUTH_PATIENT_PASSWORD}
       AUTH_NOTES_USERNAME: ${AUTH_NOTES_USERNAME}
       AUTH_NOTES_PASSWORD: ${AUTH_NOTES_PASSWORD}
+      AUTH_ASSESSMENT_USERNAME: ${AUTH_ASSESSMENT_USERNAME}
+      AUTH_ASSESSMENT_PASSWORD: ${AUTH_ASSESSMENT_PASSWORD}
 
       # Routes gérées par customRouteLocator dans SecurityConfig.java
 
@@ -208,25 +210,44 @@ services:
       retries: 5
       start_period: 60s
 
-  # TODO: Assessment Service (Sprint 3) - À développer
-  # assessment-service:
-  #   build:
-  #     context: ./assessment-service
-  #     dockerfile: Dockerfile
-  #   container_name: mediscreen-assessment-service
-  #   restart: unless-stopped
-  #   ports:
-  #     - "8083:8083"
-  #   environment:
-  #     PATIENT_SERVICE_URL: http://patient-service:8081
-  #     NOTES_SERVICE_URL: http://notes-service:8082
-  #     SPRING_APPLICATION_NAME: assessment-service
-  #     SPRING_PROFILES_ACTIVE: docker
-  #   depends_on:
-  #     - patient-service
-  #     - notes-service
-  #   networks:
-  #     - mediscreen-network
+  # Assessment Service (Sprint 3) - Microservice d'évaluation du risque diabète
+  assessment-service:
+    build:
+      context: ./assessment-service
+      dockerfile: Dockerfile
+    container_name: mediscreen-assessment-service
+    restart: unless-stopped
+    ports:
+      - "8083:8083"
+    environment:
+      # Configuration de l'application
+      SPRING_APPLICATION_NAME: assessment-service
+      SPRING_PROFILES_ACTIVE: docker
+
+      # URL du Gateway pour communication sécurisée inter-services
+      FEIGN_CLIENT_URL: http://gateway-service:8888
+
+      # Credentials Basic Auth pour validation des requêtes Gateway
+      AUTH_USERNAME: ${AUTH_ASSESSMENT_USERNAME}
+      AUTH_PASSWORD: ${AUTH_ASSESSMENT_PASSWORD}
+
+      # Configuration Java 21 Virtual Threads
+      SPRING_THREADS_VIRTUAL_ENABLED: "true"
+    depends_on:
+      patient-service:
+        condition: service_healthy
+      notes-service:
+        condition: service_healthy
+      gateway-service:
+        condition: service_started
+    networks:
+      - mediscreen-network
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8083/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
 
 # Volumes persistants
 volumes:
