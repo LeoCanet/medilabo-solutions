@@ -239,11 +239,12 @@ class PatientControllerIntegrationTest {
     }
 
     /**
-     * Teste l'intégration complète CRUD avec normalisation 3NF (exigence OpenClassrooms).
+     * Teste l'intégration complète CRUD (Create, Read, Update) avec un patient et son adresse.
+     * Workflow complet : création → lecture → modification → vérification contraintes.
      */
     @Test
-    @DisplayName("Integration - CRUD complet avec normalisation 3NF")
-    void crudPatient_3NF_Integration_Success() throws Exception {
+    @DisplayName("Integration - CRUD complet patient avec adresse")
+    void crudPatient_CompleteWorkflow_Success() throws Exception {
         // CREATE avec données normalisées
         AdresseDto adresse = AdresseDto.of("4 Valley Dr", "New York", "10001", "USA");
         PatientCreateDto createDto = new PatientCreateDto(
@@ -284,7 +285,7 @@ class PatientControllerIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.nom").value("TestEarlyOnsetModifie"));
 
-        // Vérification normalisation 3NF en base
+        // Vérification persistance en base de données
         Patient finalPatient = patientRepository.findById(patientId).orElseThrow();
         assertThat(finalPatient.getNom()).isEqualTo("TestEarlyOnsetModifie");
         assertThat(finalPatient.getPrenom()).isEqualTo("Test");

@@ -3,6 +3,7 @@ package com.mediscreen.assessmentservice.dto;
 import org.springframework.format.annotation.DateTimeFormat;
 
 import java.time.LocalDate;
+import java.time.Period;
 
 /**
  * DTO Patient pour Assessment Service
@@ -23,14 +24,15 @@ public record PatientDto(
 ) {
 
     /**
-     * Calcule l'âge du patient à partir de la date de naissance
+     * Calcule l'âge précis du patient à partir de la date de naissance
+     * Utilise Period.between() pour un calcul exact tenant compte du mois et du jour
      * @return âge en années
      */
     public int getAge() {
         if (dateNaissance == null) {
             return 0;
         }
-        return LocalDate.now().getYear() - dateNaissance.getYear();
+        return Period.between(dateNaissance, LocalDate.now()).getYears();
     }
 
     /**

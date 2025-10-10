@@ -7,7 +7,7 @@ package com.mediscreen.frontend.dto;
 public record AssessmentResponse(
     Long patientId,
     String patientName,
-    int age,
+    int patientAge,
     RiskLevel riskLevel
 ) {
 }
