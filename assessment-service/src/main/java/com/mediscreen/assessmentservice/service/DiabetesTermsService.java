@@ -83,24 +83,4 @@ public class DiabetesTermsService {
         // Cas général: recherche exacte (insensible à la casse)
         return text.contains(lowerTerm);
     }
-
-    /**
-     * Compte le nombre d'occurrences d'un terme dans un texte
-     * @param text le texte où chercher
-     * @param term le terme à chercher
-     * @return nombre d'occurrences
-     */
-    private long countOccurrences(String text, String term) {
-        if (text == null || term == null || text.isEmpty() || term.isEmpty()) {
-            return 0;
-        }
-
-        int count = 0;
-        int index = 0;
-        while ((index = text.indexOf(term, index)) != -1) {
-            count++;
-            index += term.length();
-        }
-        return count;
-    }
 }
