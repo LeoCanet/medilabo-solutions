@@ -22,9 +22,7 @@ import java.util.List;
 
 /**
  * Configuration de sécurité pour le microservice Assessment
- *
- * Cohérente avec Patient Service et Notes Service.
- * Authentification Basic Auth pour recevoir les requêtes du Gateway.
+ * Suit la même stratégie que Patient et Notes Services
  */
 @Configuration
 @EnableWebSecurity
@@ -36,48 +34,119 @@ public class SecurityConfig {
     @Value("${mediscreen.auth.password}")
     private String password;
 
+    /**
+     * Configuration de la chaîne de filtres de sécurité
+     * Validation Basic Auth pour empêcher l'accès direct au service
+     */
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        http
-            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+        return http
+            // Désactive CSRF pour l'API REST (stateless)
             .csrf(AbstractHttpConfigurer::disable)
-            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/actuator/**").permitAll()
-                .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
-                .anyRequest().authenticated()
-            )
-            .httpBasic(httpBasic -> {});
 
-        return http.build();
+            // Configuration CORS
+            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+
+            // Gestion des sessions (stateless pour microservice)
+            .sessionManagement(session ->
+                session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+
+            // Configuration des autorisations - Basic Auth requis
+            .authorizeHttpRequests(authorize -> authorize
+                    .requestMatchers("/actuator/**", "/v3/api-docs/**", "/swagger-ui/**").permitAll()
+                    .anyRequest().authenticated()
+            )
+
+            // Activation de l'authentification HTTP Basic
+            .httpBasic(basic -> {})
+
+            // Configuration des headers de sécurité
+            .headers(headers -> headers
+                .frameOptions(frameOptions -> frameOptions.deny())
+                .contentTypeOptions(contentType -> {})
+                .httpStrictTransportSecurity(hstsConfig -> hstsConfig
+                    .maxAgeInSeconds(31536000)
+                    .includeSubDomains(true)
+                )
+            )
+
+            .build();
     }
 
+    /**
+     * Configuration des utilisateurs autorisés pour Basic Auth
+     */
     @Bean
     public UserDetailsService userDetailsService() {
-        UserDetails user = User.builder()
-            .username(username)
-            .password(passwordEncoder().encode(password))
-            .roles("USER")
-            .build();
+        UserDetails serviceUser = User.builder()
+                .username(username)
+                .password(passwordEncoder().encode(password))
+                .roles("SERVICE")
+                .build();
 
-        return new InMemoryUserDetailsManager(user);
+        return new InMemoryUserDetailsManager(serviceUser);
     }
 
+    /**
+     * Encodeur de mots de passe
+     */
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
 
+    /**
+     * Configuration CORS pour permettre les appels depuis le Gateway
+     */
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of("http://localhost:8080", "http://frontend-service:8080"));
-        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(List.of("*"));
+
+        // Origines autorisées (à adapter selon l'environnement)
+        configuration.setAllowedOriginPatterns(List.of(
+            "http://localhost:*",
+            "https://localhost:*",
+            "http://127.0.0.1:*",
+            "https://127.0.0.1:*"
+        ));
+
+        // Méthodes HTTP autorisées
+        configuration.setAllowedMethods(List.of(
+            "GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"
+        ));
+
+        // Headers autorisés
+        configuration.setAllowedHeaders(List.of(
+            "Authorization",
+            "Content-Type",
+            "X-Requested-With",
+            "Accept",
+            "Origin",
+            "Access-Control-Request-Method",
+            "Access-Control-Request-Headers"
+        ));
+
+        // Headers exposés au client
+        configuration.setExposedHeaders(List.of(
+            "Access-Control-Allow-Origin",
+            "Access-Control-Allow-Credentials",
+            "Access-Control-Allow-Methods",
+            "Access-Control-Max-Age",
+            "Access-Control-Allow-Headers",
+            "Content-Length",
+            "Date",
+            "X-Total-Count"
+        ));
+
+        // Autoriser les cookies/credentials
         configuration.setAllowCredentials(true);
+
+        // Durée de cache des préflights OPTIONS
+        configuration.setMaxAge(3600L);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
+
         return source;
     }
 }

@@ -50,14 +50,19 @@ graph TB
     B --> C[Gateway :8888]
     C --> D[Patient API :8081]
     C --> F[Notes API :8082]
+    C --> H[Assessment API :8083]
     D --> E[MySQL :3307]
     F --> G[MongoDB :27018]
+    H --> C
+    H -.->|via Gateway| D
+    H -.->|via Gateway| F
 
     style A fill:#e1f5fe
     style B fill:#f3e5f5
     style C fill:#e8f5e8
     style D fill:#fff3e0
     style F fill:#e3f2fd
+    style H fill:#ffe0b2
     style E fill:#ffebee
     style G fill:#f1f8e9
 ```
@@ -70,6 +75,7 @@ graph TB
 | 🌉 **API Gateway** | http://localhost:8888 | Point d'entrée API sécurisé |
 | 👥 **Patient API** | http://localhost:8081 | Microservice patients |
 | 📝 **Notes API** | http://localhost:8082 | Microservice notes médicales |
+| 🏥 **Assessment API** | http://localhost:8083 | Microservice évaluation risque diabète |
 | 📚 **Documentation** | http://localhost:8081/swagger-ui.html | API Docs |
 
 ## 🔐 Architecture Sécurité
@@ -181,11 +187,13 @@ curl http://localhost:8081/api/v1/patients  # ❌ Bloqué
 - **Sécurité** : Intégration Basic Auth avec credentials spécifiques
 - **Données Test** : Notes conformes spécifications OpenClassrooms
 
-### 🚧 Sprint 3 - À Développer
-- **Assessment Service** : Évaluation risque diabète
-- **Algorithme** : Détection termes déclencheurs
-- **Frontend** : Affichage niveau de risque
-- **Integration** : Navigation Patient → Notes → Évaluation
+### ✅ Sprint 3 - TERMINÉ
+- **Assessment Service** : Microservice évaluation risque diabète
+- **Algorithme** : Détection 12 termes déclencheurs avec variantes grammaticales
+- **Frontend** : Page dédiée affichage niveau de risque (NONE, BORDERLINE, IN_DANGER, EARLY_ONSET)
+- **Integration** : Navigation complète Patient → Notes → Évaluation
+- **Sécurité** : Assessment autorisé sur Gateway comme service orchestrateur
+- **Tests** : 4 patients de test avec résultats conformes spécifications
 
 ## 🗄️ Bases de Données
 
@@ -328,6 +336,29 @@ ENTRYPOINT ["java", "-jar", "app.jar"]
 - 💾 **Layers optimisés** : Changements code n'impactent pas dependencies
 - 🔒 **Sécurité par défaut** : Non-root user, secrets externalisés
 
+### 🌿 Suggestions d'Amélioration Green Code
+
+**Actions recommandées pour réduire davantage l'empreinte environnementale** :
+
+#### 1. Optimisation des Images Docker
+- ⚡ **Alpine Linux** : Migrer vers `eclipse-temurin:21-jre-alpine`
+
+#### 2. Optimisation des Bases de Données
+- 💾 **Indexes optimisés** : Analyser et optimiser les requêtes fréquentes
+- 📊 **Query caching** : Activer caches MySQL et MongoDB pour réduire CPU
+
+#### 3. Optimisation du Code Java
+- ⚡ **Virtual Threads Java 21** : Déjà implémenté, continuer à utiliser
+- 🧠 **Lazy loading** : Charger données uniquement quand nécessaires
+- 📉 **Algorithmes efficaces** : Privilégier streams et opérations O(n)
+
+#### 4. Monitoring et Alertes
+- 📈 **Métriques environnementales** : Ajouter monitoring consommation CPU/RAM
+- ⚠️ **Alertes performances** : Détecter services consommant trop de ressources
+
+#### 5. Infrastructure et Déploiement
+- ⏱️ **Auto-scaling intelligent** : Adapter ressources selon charge réelle
+
 ## 📚 Technologies
 
 - **Backend** : Spring Boot 3.5.5, Java 21
@@ -351,7 +382,7 @@ ENTRYPOINT ["java", "-jar", "app.jar"]
 - ✅ **User Stories** : Toutes implémentées et testées
 - ✅ **Données test** : 4 patients + notes conformes spécifications
 - ✅ **Green Code** : Optimisations énergétiques documentées
-- ✅ **Architecture évolutive** : Prête pour Sprint 3 Assessment
+- ✅ **Architecture évolutive** 
 
 ## 📞 Support
 

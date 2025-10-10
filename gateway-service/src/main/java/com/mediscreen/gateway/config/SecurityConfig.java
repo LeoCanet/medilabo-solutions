@@ -28,6 +28,7 @@ import java.util.Base64;
  * - Gateway route intelligemment vers les microservices avec des tokens différenciés :
  *   * Patient Service : credentials spécifiques patient (variables d'environnement)
  *   * Notes Service : credentials spécifiques notes (variables d'environnement)
+ *   * Assessment Service : credentials spécifiques assessment (variables d'environnement)
  *
  * AVANTAGES SÉCURITÉ :
  * - Isolation des credentials par service (pas de partage de tokens)
@@ -61,13 +62,19 @@ public class SecurityConfig {
     @Value("${mediscreen.auth.notes.password}")
     private String notesPassword;
 
+    @Value("${mediscreen.auth.assessment.username}")
+    private String assessmentUsername;
+
+    @Value("${mediscreen.auth.assessment.password}")
+    private String assessmentPassword;
+
     @Bean
     public SecurityWebFilterChain securityWebFilterChain(ServerHttpSecurity http) {
         return http
                 .csrf(ServerHttpSecurity.CsrfSpec::disable)
                 .authorizeExchange(exchanges -> exchanges
                         .pathMatchers("/actuator/**", "/debug/**").permitAll()
-                        .pathMatchers("/api/**").hasRole("FRONTEND")
+                        .pathMatchers("/api/**").hasAnyRole("FRONTEND", "ASSESSMENT")
                         .anyExchange().authenticated()
                 )
                 .httpBasic(basic -> {})
@@ -76,14 +83,21 @@ public class SecurityConfig {
     
     @Bean
     public MapReactiveUserDetailsService userDetailsService() {
-        // Frontend user - seul autorisé à contacter le Gateway
+        // Frontend user - autorisé à contacter le Gateway
         UserDetails frontendUser = User.builder()
                 .username(frontendUsername)
                 .password(passwordEncoder().encode(frontendPassword))
                 .roles("FRONTEND")
                 .build();
 
-        return new MapReactiveUserDetailsService(frontendUser);
+        // Assessment user - autorisé à appeler Patient/Notes via Gateway (service orchestrateur)
+        UserDetails assessmentUser = User.builder()
+                .username(assessmentUsername)
+                .password(passwordEncoder().encode(assessmentPassword))
+                .roles("ASSESSMENT")
+                .build();
+
+        return new MapReactiveUserDetailsService(frontendUser, assessmentUser);
     }
     
     @Bean
@@ -98,6 +112,7 @@ public class SecurityConfig {
      * - Intercepte les requêtes Frontend → Gateway
      * - Route /api/v1/patients/** → Patient Service avec credentials spécifiques patient
      * - Route /api/v1/notes/** → Notes Service avec credentials spécifiques notes
+     * - Route /api/v1/assess/** → Assessment Service avec credentials spécifiques assessment
      * - Injection automatique des bons credentials Basic Auth par route
      */
     @Bean
@@ -114,6 +129,12 @@ public class SecurityConfig {
                         .path("/api/v1/notes/**")
                         .filters(f -> f.filter(addNotesAuthHeader()))
                         .uri("http://notes-service:8082")
+                )
+                // Route Assessment Service avec injection automatique credentials assessment
+                .route("assessment-service-route", r -> r
+                        .path("/api/v1/assess/**")
+                        .filters(f -> f.filter(addAssessmentAuthHeader()))
+                        .uri("http://assessment-service:8083")
                 )
                 .build();
     }
@@ -150,6 +171,27 @@ public class SecurityConfig {
     private GatewayFilter addNotesAuthHeader() {
         return (exchange, chain) -> {
             String credentials = notesUsername + ":" + notesPassword;
+            String authHeader = "Basic " + Base64.getEncoder().encodeToString(credentials.getBytes());
+
+            return chain.filter(exchange.mutate()
+                    .request(exchange.getRequest().mutate()
+                            .header(HttpHeaders.AUTHORIZATION, authHeader)
+                            .build())
+                    .build());
+        };
+    }
+
+    /**
+     * Filtre d'injection automatique des credentials Assessment Service
+     *
+     * PRINCIPE :
+     * - Intercepte toutes les requêtes vers /api/v1/assess/**
+     * - Remplace le header Authorization du Frontend par les credentials Assessment Service
+     * - Permet l'isolation des tokens : Frontend ne connaît pas les credentials des microservices
+     */
+    private GatewayFilter addAssessmentAuthHeader() {
+        return (exchange, chain) -> {
+            String credentials = assessmentUsername + ":" + assessmentPassword;
             String authHeader = "Basic " + Base64.getEncoder().encodeToString(credentials.getBytes());
 
             return chain.filter(exchange.mutate()

@@ -58,14 +58,19 @@ public class AssessmentService {
     }
 
     /**
-     * Compte le nombre total de termes déclencheurs dans toutes les notes
+     * Compte le nombre de termes déclencheurs UNIQUES dans toutes les notes
+     * Combine toutes les notes puis compte les termes distincts trouvés
      * @param notes liste des notes du patient
-     * @return nombre total de termes déclencheurs
+     * @return nombre de termes déclencheurs uniques
      */
     private int countTriggerTermsInNotes(List<NoteDto> notes) {
-        return notes.stream()
-                .mapToInt(note -> diabetesTermsService.countTriggerTerms(note.note()))
-                .sum();
+        // Combiner toutes les notes en un seul texte
+        String allNotesText = notes.stream()
+                .map(NoteDto::note)
+                .reduce("", (a, b) -> a + " " + b);
+
+        // Compter les termes uniques dans le texte combiné
+        return diabetesTermsService.countTriggerTerms(allNotesText);
     }
 
     /**

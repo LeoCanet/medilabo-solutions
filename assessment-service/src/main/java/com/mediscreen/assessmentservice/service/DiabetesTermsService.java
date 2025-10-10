@@ -16,18 +16,18 @@ public class DiabetesTermsService {
 
     /**
      * Les 12 termes déclencheurs obligatoires OpenClassrooms
-     * (insensibles à la casse lors de la recherche)
+     * Avec variantes grammaticales pour une détection correcte
      */
     private static final List<String> TRIGGER_TERMS = Arrays.asList(
         "Hémoglobine A1C",
         "Microalbumine",
         "Taille",
         "Poids",
-        "Fumeur",
+        "Fumeur",  // Détecte aussi: fume, fumer, fumeur, fumeuse
         "Fumeuse",
-        "Anormal",
+        "Anormal", // Détecte aussi: anormal, anormale, anormales, anormaux
         "Cholestérol",
-        "Vertiges",
+        "Vertige", // Détecte aussi: vertige, vertiges
         "Rechute",
         "Réaction",
         "Anticorps"
@@ -42,9 +42,10 @@ public class DiabetesTermsService {
     }
 
     /**
-     * Compte le nombre de termes déclencheurs dans un texte
+     * Compte le nombre de termes déclencheurs DIFFÉRENTS dans un texte
+     * Gère les variantes grammaticales (singulier/pluriel, formes verbales)
      * @param text le texte à analyser
-     * @return nombre de termes déclencheurs trouvés
+     * @return nombre de termes déclencheurs uniques trouvés
      */
     public int countTriggerTerms(String text) {
         if (text == null || text.isEmpty()) {
@@ -53,8 +54,33 @@ public class DiabetesTermsService {
 
         String lowerText = text.toLowerCase();
         return (int) TRIGGER_TERMS.stream()
-                .mapToLong(term -> countOccurrences(lowerText, term.toLowerCase()))
-                .sum();
+                .filter(term -> matchesTerm(lowerText, term))
+                .count();
+    }
+
+    /**
+     * Vérifie si un terme déclencheur est présent dans le texte
+     * Gère les variantes grammaticales pour une détection robuste
+     */
+    private boolean matchesTerm(String text, String term) {
+        String lowerTerm = term.toLowerCase();
+
+        // Cas spéciaux avec variantes grammaticales
+        if (lowerTerm.equals("fumeur") || lowerTerm.equals("fumeuse")) {
+            // Détecte: fumeur, fumeuse, fume, fumer, fumé, fumée
+            return text.contains("fum");
+        }
+        if (lowerTerm.equals("anormal")) {
+            // Détecte: anormal, anormale, anormales, anormaux
+            return text.contains("anormal");
+        }
+        if (lowerTerm.equals("vertige")) {
+            // Détecte: vertige, vertiges
+            return text.contains("vertige");
+        }
+
+        // Cas général: recherche exacte (insensible à la casse)
+        return text.contains(lowerTerm);
     }
 
     /**

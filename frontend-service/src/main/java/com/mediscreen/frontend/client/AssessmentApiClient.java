@@ -1,6 +1,5 @@
 package com.mediscreen.frontend.client;
 
-import com.mediscreen.frontend.config.FeignConfig;
 import com.mediscreen.frontend.dto.AssessmentResponse;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -10,11 +9,7 @@ import org.springframework.web.bind.annotation.PathVariable;
  * Client Feign pour Assessment Service
  * Communication via Spring Cloud Gateway avec authentification Basic Auth automatique
  */
-@FeignClient(
-    name = "assessment-service",
-    url = "${assessment.service.url}",
-    configuration = FeignConfig.class
-)
+@FeignClient(name = "assessment-api", url = "${feign.client.url}")
 public interface AssessmentApiClient {
 
     /**
@@ -22,6 +17,6 @@ public interface AssessmentApiClient {
      * @param patientId ID du patient
      * @return résultat de l'évaluation avec niveau de risque
      */
-    @GetMapping("/api/v1/assess/{patientId}")
+    @GetMapping("/api/v1/assess/patient/{patientId}")
     AssessmentResponse assessDiabetesRisk(@PathVariable Long patientId);
 }

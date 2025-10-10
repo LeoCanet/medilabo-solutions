@@ -98,7 +98,7 @@
 
     <!-- Actions -->
     <div class="mt-4">
-        <a th:href="@{/patients/{id}/update(id=${patient.id()})}" class="btn btn-primary">
+        <a th:href="@{/patients/update/{id}(id=${patient.id()})}" class="btn btn-primary">
             Modifier Patient
         </a>
         <a th:href="@{/patients/{id}/notes(id=${patient.id()})}" class="btn btn-secondary">
