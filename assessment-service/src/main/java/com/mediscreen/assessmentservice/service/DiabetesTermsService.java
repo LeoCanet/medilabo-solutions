@@ -16,18 +16,19 @@ public class DiabetesTermsService {
 
     /**
      * Les 12 termes déclencheurs obligatoires OpenClassrooms
-     * Avec variantes grammaticales pour une détection correcte
+     * Note: "Fumeur" détecte automatiquement fumeur/fumeuse/fumer via contains("fum")
+     * Note: "Vertige" détecte automatiquement vertige/vertiges
+     * Note: "Anormal" détecte automatiquement anormal/anormale/anormaux/anormales
      */
     private static final List<String> TRIGGER_TERMS = Arrays.asList(
         "Hémoglobine A1C",
         "Microalbumine",
         "Taille",
         "Poids",
-        "Fumeur",  // Détecte aussi: fume, fumer, fumeur, fumeuse
-        "Fumeuse",
-        "Anormal", // Détecte aussi: anormal, anormale, anormales, anormaux
+        "Fumeur",      // Détecte aussi: fume, fumer, fumeur, fumeuse
+        "Anormal",     // Détecte aussi: anormal, anormale, anormales, anormaux
         "Cholestérol",
-        "Vertige", // Détecte aussi: vertige, vertiges
+        "Vertige",     // Détecte aussi: vertige, vertiges
         "Rechute",
         "Réaction",
         "Anticorps"
@@ -66,7 +67,7 @@ public class DiabetesTermsService {
         String lowerTerm = term.toLowerCase();
 
         // Cas spéciaux avec variantes grammaticales
-        if (lowerTerm.equals("fumeur") || lowerTerm.equals("fumeuse")) {
+        if (lowerTerm.equals("fumeur")) {
             // Détecte: fumeur, fumeuse, fume, fumer, fumé, fumée
             return text.contains("fum");
         }

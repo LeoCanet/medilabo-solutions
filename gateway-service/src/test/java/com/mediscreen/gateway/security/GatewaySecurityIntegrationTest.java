@@ -34,7 +34,9 @@ import java.util.Base64;
     "mediscreen.auth.patient.username=test-patient",
     "mediscreen.auth.patient.password=patient-pass",
     "mediscreen.auth.notes.username=test-notes",
-    "mediscreen.auth.notes.password=notes-pass"
+    "mediscreen.auth.notes.password=notes-pass",
+    "mediscreen.auth.assessment.username=test-assessment",
+    "mediscreen.auth.assessment.password=assessment-pass"
 })
 class GatewaySecurityIntegrationTest {
 

@@ -23,23 +23,22 @@ class DiabetesTermsServiceTest {
     }
 
     @Test
-    @DisplayName("Devrait retourner les 12 termes déclencheurs obligatoires")
+    @DisplayName("Devrait retourner les 11 termes déclencheurs (Fumeur détecte fumeur+fumeuse)")
     void shouldReturnAllTriggerTerms() {
         // When
         List<String> triggerTerms = diabetesTermsService.getTriggerTerms();
 
         // Then
-        assertThat(triggerTerms).hasSize(12);
+        assertThat(triggerTerms).hasSize(11);
         assertThat(triggerTerms).containsExactlyInAnyOrder(
                 "Hémoglobine A1C",
                 "Microalbumine",
                 "Taille",
                 "Poids",
-                "Fumeur",
-                "Fumeuse",
+                "Fumeur",  // Détecte aussi fumeuse
                 "Anormal",
                 "Cholestérol",
-                "Vertiges",
+                "Vertige", // Détecte aussi vertiges
                 "Rechute",
                 "Réaction",
                 "Anticorps"
@@ -136,7 +135,7 @@ class DiabetesTermsServiceTest {
     }
 
     @Test
-    @DisplayName("Devrait compter plusieurs occurrences du même terme")
+    @DisplayName("Devrait compter un seul terme même avec plusieurs occurrences (comptage UNIQUE)")
     void shouldCountMultipleOccurrencesOfSameTerm() {
         // Given
         String text = "Réaction allergique notée. Nouvelle réaction observée. Réaction confirmée.";
@@ -145,11 +144,11 @@ class DiabetesTermsServiceTest {
         int count = diabetesTermsService.countTriggerTerms(text);
 
         // Then
-        assertThat(count).isEqualTo(3); // 3 occurrences de "réaction"
+        assertThat(count).isEqualTo(1); // 1 terme unique "réaction" malgré 3 occurrences
     }
 
     @Test
-    @DisplayName("Devrait compter 0 terme quand aucun déclencheur présent")
+    @DisplayName("Devrait compter 1 terme unique même avec multiples occurrences (Patient 1 OpenClassrooms)")
     void shouldCountZeroWhenNoTriggerTerms() {
         // Given
         String text = "Le patient déclare qu'il 'se sent très bien' Poids égal ou inférieur au poids recommandé";
@@ -158,7 +157,7 @@ class DiabetesTermsServiceTest {
         int count = diabetesTermsService.countTriggerTerms(text);
 
         // Then
-        assertThat(count).isEqualTo(2); // "Poids" apparaît 2 fois
+        assertThat(count).isEqualTo(1); // "Poids" apparaît 2 fois mais comptage UNIQUE = 1
     }
 
     @Test

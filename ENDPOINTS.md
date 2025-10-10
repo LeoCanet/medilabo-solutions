@@ -71,8 +71,9 @@ Service de routage intelligent avec sécurité Basic Auth différenciée par mic
 
 | Method | Path (Gateway) | Routes To | Credentials Injectés | Description |
 |---|---|---|---|---|
-| `ANY` | `/api/v1/patients/**` | `patient-service:8081` | `mediscreen-patient:patient_secure_2024` | Routes vers Patient Service. |
-| `ANY` | `/api/v1/notes/**` | `notes-service:8082` | `mediscreen-notes:notes_secure_2024` | Routes vers Notes Service. |
+| `ANY` | `/api/v1/patients/**` | `patient-service:8081` | `mediscreen-patient:patientpass123` | Routes vers Patient Service. |
+| `ANY` | `/api/v1/notes/**` | `notes-service:8082` | `mediscreen-notes:notespass123` | Routes vers Notes Service. |
+| `ANY` | `/api/v1/assess/**` | `assessment-service:8083` | `mediscreen-assessment:assessmentpass123` | Routes vers Assessment Service. |
 
 ### Filtres de Sécurité
 
@@ -119,19 +120,39 @@ Interface web Thymeleaf avec architecture découplée et pages spécialisées.
 
 *   **URL:** `http://localhost:8080/actuator`
 
-## 5. Assessment Service (Port: 8083) ⏳ Sprint 3
+## 5. Assessment Service (Port: 8083) ✅ Sprint 3 TERMINÉ
 
-Service d'évaluation du risque diabète (en préparation).
+Service d'évaluation du risque diabète avec algorithme de détection des termes déclencheurs.
 
 *   **Base URL:** `http://localhost:8083`
 *   **API Base Path:** `/api/v1/assess`
 *   **Sécurité:** Basic Auth requis (credentials spécifiques assessment)
+*   **Architecture:** Service orchestrateur (appelle Patient + Notes via Gateway)
 
-### API Endpoints (Prévus)
+### API Endpoints
 
 | Method | Path | Description |
 |---|---|---|
-| `GET` | `/api/v1/assess/{patientId}` | Évalue le risque diabète d'un patient. |
+| `GET` | `/api/v1/assess/{patientId}` | Évalue le risque diabète d'un patient (NONE, BORDERLINE, IN_DANGER, EARLY_ONSET). |
+
+### Algorithme d'Évaluation
+
+**11 termes déclencheurs** : Hémoglobine A1C, Microalbumine, Taille, Poids, Fumeur, Anormal, Cholestérol, Vertige, Rechute, Réaction, Anticorps
+
+**Niveaux de risque** :
+- **NONE** : Aucun terme déclencheur
+- **BORDERLINE** : 2-5 termes ET patient >30 ans
+- **IN_DANGER** : Homme <30 ans (3+ termes) OU Femme <30 ans (4+ termes) OU Patient >30 ans (6-7 termes)
+- **EARLY_ONSET** : Homme <30 ans (5+ termes) OU Femme <30 ans (7+ termes) OU Patient >30 ans (8+ termes)
+
+### API Documentation (Swagger UI)
+
+*   **URL:** `http://localhost:8083/swagger-ui.html`
+
+### Monitoring (Spring Boot Actuator)
+
+*   **URL:** `http://localhost:8083/actuator`
+*   **Health Check:** `http://localhost:8083/actuator/health`
 
 ## Bases de Données
 
@@ -153,10 +174,13 @@ Service d'évaluation du risque diabète (en préparation).
 
 ```bash
 # Patient Service
-curl -u "mediscreen-patient:patient_secure_2024" http://localhost:8081/api/v1/patients
+curl -u "mediscreen-patient:patientpass123" http://localhost:8081/api/v1/patients
 
 # Notes Service
-curl -u "mediscreen-notes:notes_secure_2024" http://localhost:8082/api/v1/notes/patient/1
+curl -u "mediscreen-notes:notespass123" http://localhost:8082/api/v1/notes/patient/1
+
+# Assessment Service
+curl -u "mediscreen-assessment:assessmentpass123" http://localhost:8083/api/v1/assess/1
 ```
 
 ### Tests via Gateway
@@ -165,6 +189,7 @@ curl -u "mediscreen-notes:notes_secure_2024" http://localhost:8082/api/v1/notes/
 # Via Gateway (injection automatique credentials)
 curl -u "mediscreen-frontend:medipass123" http://localhost:8888/api/v1/patients
 curl -u "mediscreen-frontend:medipass123" http://localhost:8888/api/v1/notes/patient/1
+curl -u "mediscreen-frontend:medipass123" http://localhost:8888/api/v1/assess/1
 ```
 
 ### Tests Frontend End-to-End
@@ -183,6 +208,7 @@ Services déployés via `docker-compose.yml` :
 - **mongodb** (mediscreen-mongo) : Port 27018
 - **patient-service** (mediscreen-patient-service) : Port 8081
 - **notes-service** (mediscreen-notes-service) : Port 8082
+- **assessment-service** (mediscreen-assessment-service) : Port 8083
 - **gateway-service** (mediscreen-gateway) : Port 8888
 - **frontend-service** (mediscreen-frontend) : Port 8080
 
@@ -194,8 +220,11 @@ curl http://localhost:8080/actuator/health  # Frontend
 curl http://localhost:8888/actuator/health  # Gateway
 curl http://localhost:8081/actuator/health  # Patient
 curl http://localhost:8082/actuator/health  # Notes
+curl http://localhost:8083/actuator/health  # Assessment
 ```
 
 ---
 
-**Architecture microservices complète Sprint 1 + Sprint 2 avec sécurité Basic Auth différenciée et pattern Repository découplé.**
+**Architecture microservices complète Sprint 1 + Sprint 2 + Sprint 3 avec sécurité Basic Auth différenciée et pattern Repository découplé.**
+
+**Dernière mise à jour** : 10 Octobre 2025 - Sprint 3 TERMINÉ ✅

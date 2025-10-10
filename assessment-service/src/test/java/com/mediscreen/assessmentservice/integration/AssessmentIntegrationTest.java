@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.TestPropertySource;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -27,6 +28,12 @@ import static org.mockito.Mockito.when;
  * Valide les 4 cas obligatoires OpenClassrooms avec données de test exactes
  */
 @SpringBootTest
+@TestPropertySource(properties = {
+        "mediscreen.auth.username=test-assessment",
+        "mediscreen.auth.password=test-pass",
+        "AUTH_USERNAME=test-user",
+        "AUTH_PASSWORD=test-pass"
+})
 @DisplayName("Tests intégration - 4 cas OpenClassrooms obligatoires")
 class AssessmentIntegrationTest {
 
@@ -70,8 +77,8 @@ class AssessmentIntegrationTest {
      * - Date naissance: 1966-12-31 (58 ans, donc >30)
      * - Genre: F
      * - Notes: "Le patient déclare qu'il 'se sent très bien' Poids égal ou inférieur au poids recommandé"
-     * - Termes déclencheurs: 2 (Poids apparaît 2 fois)
-     * - ATTENDU: BORDERLINE (2 termes ET >30 ans)
+     * - Termes déclencheurs UNIQUES: 1 (Poids apparaît 2 fois mais compte 1)
+     * - ATTENDU: NONE (1 seul terme unique)
      */
     private void setupPatient1None() {
         patient1None = new PatientDto(
@@ -102,8 +109,8 @@ class AssessmentIntegrationTest {
      * - Date naissance: 1945-06-24 (79 ans, donc >30)
      * - Genre: M
      * - Notes: 2 notes avec "anormal" (2 fois) et "réaction" (1 fois)
-     * - Termes déclencheurs: 3 (anormal x2 + réaction x1)
-     * - ATTENDU: BORDERLINE (3 termes entre 2-5 ET >30 ans)
+     * - Termes déclencheurs UNIQUES: 2 (anormal + réaction)
+     * - ATTENDU: BORDERLINE (2 termes entre 2-5 ET >30 ans)
      */
     private void setupPatient2Borderline() {
         patient2Borderline = new PatientDto(
@@ -143,8 +150,8 @@ class AssessmentIntegrationTest {
      * - Date naissance: 2004-06-18 (20 ans, donc <30)
      * - Genre: M
      * - Notes: 2 notes avec "fumeur" (2 fois), "anormal" (1 fois), "cholestérol" (1 fois)
-     * - Termes déclencheurs: 4 (fumeur x2 + anormal x1 + cholestérol x1)
-     * - ATTENDU: IN_DANGER (homme <30 ans avec 4 termes, seuil 3+)
+     * - Termes déclencheurs UNIQUES: 3 (fumeur + anormal + cholestérol)
+     * - ATTENDU: IN_DANGER (homme <30 ans avec 3 termes, seuil 3+)
      */
     private void setupPatient3InDanger() {
         patient3InDanger = new PatientDto(
@@ -183,16 +190,17 @@ class AssessmentIntegrationTest {
      * - Prénom: Test
      * - Date naissance: 2002-06-28 (22 ans, donc <30)
      * - Genre: F
-     * - Notes: 4 notes avec 8 termes déclencheurs
-     *   * "Réaction" (2 fois)
-     *   * "Anticorps" (1 fois)
-     *   * "Hémoglobine A1C" (1 fois)
-     *   * "Taille" (1 fois)
-     *   * "Poids" (1 fois)
-     *   * "Cholestérol" (1 fois)
-     *   * "Vertige" (1 fois)
-     * - Termes déclencheurs: 9 total
-     * - ATTENDU: EARLY_ONSET (femme <30 ans avec 9 termes, seuil 7+)
+     * - Notes: 4 notes avec termes déclencheurs UNIQUES:
+     *   * "Anticorps" (1 occurrence comptée 1 fois)
+     *   * "Réaction" (2 occurrences comptées 1 fois)
+     *   * "Fumeur" (1 occurrence comptée 1 fois)
+     *   * "Hémoglobine A1C" (1 occurrence comptée 1 fois)
+     *   * "Taille" (1 occurrence comptée 1 fois)
+     *   * "Poids" (1 occurrence comptée 1 fois)
+     *   * "Cholestérol" (1 occurrence comptée 1 fois)
+     *   * "Vertige" (1 occurrence comptée 1 fois)
+     * - Termes déclencheurs UNIQUES: 8 total
+     * - ATTENDU: EARLY_ONSET (femme <30 ans avec 8 termes, seuil 7+)
      */
     private void setupPatient4EarlyOnset() {
         patient4EarlyOnset = new PatientDto(
@@ -244,8 +252,8 @@ class AssessmentIntegrationTest {
     // ========== TESTS DES 4 CAS OPENCLASSROOMS ==========
 
     @Test
-    @DisplayName("CAS 1 OpenClassrooms - Patient TestNone devrait retourner BORDERLINE (2 termes 'Poids', >30 ans)")
-    void testCase1_TestNone_ShouldReturnBorderline() {
+    @DisplayName("CAS 1 OpenClassrooms - Patient TestNone devrait retourner NONE (1 terme unique 'Poids')")
+    void testCase1_TestNone_ShouldReturnNone() {
         // Given
         when(patientApiClient.getPatientById(1L)).thenReturn(patient1None);
         when(notesApiClient.getNotesByPatientId(1)).thenReturn(patient1Notes);
@@ -254,12 +262,12 @@ class AssessmentIntegrationTest {
         RiskLevel risk = assessmentService.assessDiabetesRisk(1L);
 
         // Then
-        assertThat(risk).isEqualTo(RiskLevel.BORDERLINE);
+        assertThat(risk).isEqualTo(RiskLevel.NONE);
         assertThat(patient1None.getAge()).isGreaterThan(30);
     }
 
     @Test
-    @DisplayName("CAS 2 OpenClassrooms - Patient TestBorderline devrait retourner BORDERLINE (3 termes, >30 ans)")
+    @DisplayName("CAS 2 OpenClassrooms - Patient TestBorderline devrait retourner BORDERLINE (2 termes uniques, >30 ans)")
     void testCase2_TestBorderline_ShouldReturnBorderline() {
         // Given
         when(patientApiClient.getPatientById(2L)).thenReturn(patient2Borderline);
@@ -274,7 +282,7 @@ class AssessmentIntegrationTest {
     }
 
     @Test
-    @DisplayName("CAS 3 OpenClassrooms - Patient TestInDanger devrait retourner IN_DANGER (4 termes, homme <30 ans)")
+    @DisplayName("CAS 3 OpenClassrooms - Patient TestInDanger devrait retourner IN_DANGER (3 termes uniques, homme <30 ans)")
     void testCase3_TestInDanger_ShouldReturnInDanger() {
         // Given
         when(patientApiClient.getPatientById(3L)).thenReturn(patient3InDanger);
@@ -290,7 +298,7 @@ class AssessmentIntegrationTest {
     }
 
     @Test
-    @DisplayName("CAS 4 OpenClassrooms - Patient TestEarlyOnset devrait retourner EARLY_ONSET (9 termes, femme <30 ans)")
+    @DisplayName("CAS 4 OpenClassrooms - Patient TestEarlyOnset devrait retourner EARLY_ONSET (8 termes uniques, femme <30 ans)")
     void testCase4_TestEarlyOnset_ShouldReturnEarlyOnset() {
         // Given
         when(patientApiClient.getPatientById(4L)).thenReturn(patient4EarlyOnset);
@@ -331,8 +339,8 @@ class AssessmentIntegrationTest {
 
         // Then - Vérifier les résultats attendus
         assertThat(risk1)
-                .as("Patient 1 (TestNone) devrait être BORDERLINE")
-                .isEqualTo(RiskLevel.BORDERLINE);
+                .as("Patient 1 (TestNone) devrait être NONE")
+                .isEqualTo(RiskLevel.NONE);
 
         assertThat(risk2)
                 .as("Patient 2 (TestBorderline) devrait être BORDERLINE")
