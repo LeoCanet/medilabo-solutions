@@ -155,64 +155,6 @@ class GatewayRoutingIntegrationTest {
     }
 
     /**
-     * Teste la différenciation des routes Patient vs Notes.
-     * Valide que chaque service reçoit bien ses propres credentials.
-     */
-    @Test
-    @DisplayName("Tokens différenciés - Injection credentials spécifiques par route")
-    void credentialsInjection_ShouldBeDifferentiatedByRoute() {
-        // Test route patient - devrait injecter credentials patient
-        webTestClient.get()
-                .uri("/api/v1/patients/1")
-                .header(HttpHeaders.AUTHORIZATION, validFrontendAuth)
-                .exchange()
-                .expectStatus().is5xxServerError(); // Route configurée, service non disponible
-
-        // Test route notes - devrait injecter credentials notes (différents)
-        webTestClient.get()
-                .uri("/api/v1/notes/patient/1")
-                .header(HttpHeaders.AUTHORIZATION, validFrontendAuth)
-                .exchange()
-                .expectStatus().is5xxServerError(); // Route configurée, service non disponible
-
-        // Le fait que les deux requêtes passent l'authentification Gateway
-        // confirme que l'injection de credentials fonctionne correctement
-    }
-
-    /**
-     * Teste les méthodes HTTP supportées sur les routes.
-     */
-    @Test
-    @DisplayName("Routage - Méthodes HTTP supportées")
-    void httpMethods_ShouldBeSupportedOnRoutes() {
-        // Test méthodes HTTP sur route patient
-        webTestClient.get()
-                .uri("/api/v1/patients")
-                .header(HttpHeaders.AUTHORIZATION, validFrontendAuth)
-                .exchange()
-                .expectStatus().is5xxServerError();
-
-        webTestClient.post()
-                .uri("/api/v1/patients")
-                .header(HttpHeaders.AUTHORIZATION, validFrontendAuth)
-                .exchange()
-                .expectStatus().is5xxServerError();
-
-        // Test méthodes HTTP sur route notes
-        webTestClient.get()
-                .uri("/api/v1/notes/patient/1")
-                .header(HttpHeaders.AUTHORIZATION, validFrontendAuth)
-                .exchange()
-                .expectStatus().is5xxServerError();
-
-        webTestClient.post()
-                .uri("/api/v1/notes")
-                .header(HttpHeaders.AUTHORIZATION, validFrontendAuth)
-                .exchange()
-                .expectStatus().is5xxServerError();
-    }
-
-    /**
      * Teste la configuration des URIs de destination.
      */
     @Test

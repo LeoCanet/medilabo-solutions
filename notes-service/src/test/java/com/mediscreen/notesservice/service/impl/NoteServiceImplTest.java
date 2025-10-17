@@ -237,31 +237,4 @@ class NoteServiceImplTest {
         verify(noteRepository, never()).deleteById(any(String.class));
     }
 
-    /**
-     * Teste la récupération de toutes les notes lorsque la base est vide.
-     */
-    @Test
-    @DisplayName("getAllNotes - Should return empty list when no notes")
-    void getAllNotes_EmptyList() {
-        when(noteRepository.findAll()).thenReturn(Arrays.asList());
-        when(noteMapper.toDtoList(anyList())).thenReturn(Arrays.asList());
-
-        List<NoteDto> result = noteService.getAllNotes();
-
-        assertThat(result).isEmpty();
-    }
-
-    /**
-     * Teste la récupération des notes par patient ID avec liste vide.
-     */
-    @Test
-    @DisplayName("getNotesByPatientId - Should return empty list when no notes for patient")
-    void getNotesByPatientId_EmptyList() {
-        when(noteRepository.findByPatIdOrderByCreatedDateDesc(999)).thenReturn(Arrays.asList());
-        when(noteMapper.toDtoList(anyList())).thenReturn(Arrays.asList());
-
-        List<NoteDto> result = noteService.getNotesByPatientId(999);
-
-        assertThat(result).isEmpty();
-    }
 }

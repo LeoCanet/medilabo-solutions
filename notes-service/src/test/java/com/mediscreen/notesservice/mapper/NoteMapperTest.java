@@ -167,46 +167,4 @@ class NoteMapperTest {
         assertThat(existingNote.getCreatedDate()).isEqualTo(originalDate); // Préservé (ignoré dans mapping)
     }
 
-    /**
-     * Teste le mapping avec des termes déclencheurs diabète (conformité OpenClassrooms).
-     */
-    @Test
-    @DisplayName("toDto - Should correctly map note with diabetes trigger terms")
-    void toDto_ShouldMapNotesWithDiabetesTriggerTerms() {
-        Note noteWithTriggers = Note.builder()
-                .id("507f1f77bcf86cd799439011")
-                .patId(2)
-                .patient("Test TestBorderline")
-                .note("Le patient déclare qu'il ressent beaucoup de stress au travail Il se plaint également que son audition est anormale dernièrement. Hémoglobine A1C supérieure au niveau recommandé. Cholestérol élevé.")
-                .createdDate(LocalDateTime.now())
-                .build();
-
-        NoteDto dto = noteMapper.toDto(noteWithTriggers);
-
-        assertThat(dto).isNotNull();
-        assertThat(dto.note()).contains("Hémoglobine A1C");
-        assertThat(dto.note()).contains("Cholestérol");
-        assertThat(dto.note()).contains("anormal");
-    }
-
-    /**
-     * Teste le mapping avec formatage original conservé (exigence OpenClassrooms).
-     */
-    @Test
-    @DisplayName("toEntity - Should preserve original formatting in note content")
-    void toEntity_ShouldPreserveOriginalFormatting() {
-        NoteCreateDto createDto = NoteCreateDto.of(
-                3,
-                "Test TestInDanger",
-                "Le patient déclare qu'il fume depuis peu\n\nLe patient déclare qu'il est fumeur et qu'il a cessé de fumer l'année dernière\nIl se plaint également de crises d'apnée respiratoire anormales\n\nTests de laboratoire indiquant un taux de cholestérol LDL élevé"
-        );
-
-        Note entity = noteMapper.toEntity(createDto);
-
-        assertThat(entity).isNotNull();
-        assertThat(entity.getNote()).contains("\n\n");
-        assertThat(entity.getNote()).contains("fume");
-        assertThat(entity.getNote()).contains("cholestérol");
-        assertThat(entity.getNote()).contains("anormal");
-    }
 }

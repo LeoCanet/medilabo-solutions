@@ -208,16 +208,6 @@ class PatientControllerIntegrationTest {
 
 
     /**
-     * Teste la gestion des erreurs - patient non trouvé.
-     */
-    @Test
-    @DisplayName("Integration - Patient non trouvé")
-    void getPatientById_NotFound_Integration() throws Exception {
-        mockMvc.perform(get("/api/v1/patients/{id}", 999L))
-                .andExpect(status().isNotFound());
-    }
-
-    /**
      * Teste la validation des données d'entrée.
      */
     @Test

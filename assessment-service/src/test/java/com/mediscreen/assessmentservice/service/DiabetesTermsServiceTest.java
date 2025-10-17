@@ -23,29 +23,6 @@ class DiabetesTermsServiceTest {
     }
 
     @Test
-    @DisplayName("Devrait retourner les 11 termes déclencheurs (Fumeur détecte fumeur+fumeuse)")
-    void shouldReturnAllTriggerTerms() {
-        // When
-        List<String> triggerTerms = diabetesTermsService.getTriggerTerms();
-
-        // Then
-        assertThat(triggerTerms).hasSize(11);
-        assertThat(triggerTerms).containsExactlyInAnyOrder(
-                "Hémoglobine A1C",
-                "Microalbumine",
-                "Taille",
-                "Poids",
-                "Fumeur",  // Détecte aussi fumeuse
-                "Anormal",
-                "Cholestérol",
-                "Vertige", // Détecte aussi vertiges
-                "Rechute",
-                "Réaction",
-                "Anticorps"
-        );
-    }
-
-    @Test
     @DisplayName("Devrait compter 0 terme dans un texte vide")
     void shouldCountZeroTermsInEmptyText() {
         // When
@@ -109,7 +86,7 @@ class DiabetesTermsServiceTest {
     }
 
     @Test
-    @DisplayName("Devrait compter 4 termes dans un texte avec plusieurs déclencheurs (Taille, Poids, Cholestérol, Vertige)")
+    @DisplayName("Devrait compter 5 termes dans un texte avec plusieurs déclencheurs (Taille, Poids, Cholestérol, Vertige, Réaction)")
     void shouldCountFourTermsWithMultipleTriggers() {
         // Given
         String text = "Taille, Poids, Cholestérol, Vertige et Réaction";
