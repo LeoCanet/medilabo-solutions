@@ -12,13 +12,18 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 
 /**
- * Service d'évaluation du risque diabète
+ * Service d'évaluation du risque diabète (Orchestrateur)
  *
- * Implémente l'algorithme exact selon les exigences OpenClassrooms :
- * - None: 0 terme déclencheur
- * - Borderline: 2-5 termes ET >30 ans
- * - In Danger: Homme <30 ans (3+ termes) | Femme <30 ans (4+ termes) | >30 ans (6-7 termes)
- * - Early onset: Homme <30 ans (5+ termes) | Femme <30 ans (7+ termes) | >30 ans (8+ termes)
+ * Responsabilité UNIQUE : Coordonner les appels aux services externes
+ * - Récupère les données patient via PatientApiClient
+ * - Récupère les notes médicales via NotesApiClient
+ * - Compte les termes déclencheurs via DiabetesTermsService
+ * - Délègue le calcul du risque à DiabetesRiskCalculator
+ *
+ * Architecture : Séparation claire orchestration vs algorithme
+ * - Cette classe = Orchestrateur (coordination appels externes)
+ * - DiabetesRiskCalculator = Algorithme pur (calcul risque)
+ *
  */
 @Slf4j
 @Service
@@ -28,6 +33,7 @@ public class AssessmentService {
     private final PatientApiClient patientApiClient;
     private final NotesApiClient notesApiClient;
     private final DiabetesTermsService diabetesTermsService;
+    private final DiabetesRiskCalculator riskCalculator;
 
     /**
      * Évalue le risque diabète d'un patient
@@ -46,79 +52,36 @@ public class AssessmentService {
         List<NoteDto> notes = notesApiClient.getNotesByPatientId(patientId.intValue());
         log.debug("Nombre de notes récupérées: {}", notes.size());
 
-        // 3. Compter les termes déclencheurs dans toutes les notes
-        int triggerTermsCount = countTriggerTermsInNotes(notes);
+        // 3. Préparer les données : combiner toutes les notes en texte
+        String combinedNotesText = combineNotesText(notes);
+
+        // 4. Compter les termes déclencheurs via le service spécialisé
+        int triggerTermsCount = diabetesTermsService.countTriggerTerms(combinedNotesText);
         log.debug("Nombre total de termes déclencheurs: {}", triggerTermsCount);
 
-        // 4. Appliquer l'algorithme d'évaluation
-        RiskLevel riskLevel = calculateRiskLevel(patient, triggerTermsCount);
+        // 5. Déléguer le calcul du risque au calculateur spécialisé
+        RiskLevel riskLevel = riskCalculator.calculateRisk(
+            patient.getAge(),
+            patient.isMale(),
+            triggerTermsCount
+        );
         log.info("Évaluation terminée pour patient ID: {} - Risque: {}", patientId, riskLevel);
 
         return riskLevel;
     }
 
     /**
-     * Compte le nombre de termes déclencheurs UNIQUES dans toutes les notes
-     * Combine toutes les notes puis compte les termes distincts trouvés
+     * Méthode utilitaire : Combine toutes les notes en un seul texte
+     *
+     * Responsabilité UNIQUE : Transformation de données
+     * Prépare les données pour le service de comptage de termes
+     *
      * @param notes liste des notes du patient
-     * @return nombre de termes déclencheurs uniques
+     * @return texte combiné de toutes les notes (espaces entre chaque note)
      */
-    private int countTriggerTermsInNotes(List<NoteDto> notes) {
-        // Combiner toutes les notes en un seul texte
-        String allNotesText = notes.stream()
+    private String combineNotesText(List<NoteDto> notes) {
+        return notes.stream()
                 .map(NoteDto::note)
                 .reduce("", (a, b) -> a + " " + b);
-
-        // Compter les termes uniques dans le texte combiné
-        return diabetesTermsService.countTriggerTerms(allNotesText);
-    }
-
-    /**
-     * Calcule le niveau de risque selon l'algorithme OpenClassrooms
-     * @param patient informations du patient
-     * @param triggerTermsCount nombre de termes déclencheurs
-     * @return niveau de risque
-     */
-    private RiskLevel calculateRiskLevel(PatientDto patient, int triggerTermsCount) {
-        int age = patient.getAge();
-        boolean isMale = patient.isMale();
-        boolean isFemale = patient.isFemale();
-
-        log.debug("Calcul risque: âge={}, male={}, termes={}", age, isMale, triggerTermsCount);
-
-        // None: Aucun terme déclencheur
-        if (triggerTermsCount == 0) {
-            return RiskLevel.NONE;
-        }
-
-        // Patients > 30 ans
-        if (age > 30) {
-            if (triggerTermsCount >= 2 && triggerTermsCount <= 5) {
-                return RiskLevel.BORDERLINE;
-            } else if (triggerTermsCount >= 6 && triggerTermsCount <= 7) {
-                return RiskLevel.IN_DANGER;
-            } else if (triggerTermsCount >= 8) {
-                return RiskLevel.EARLY_ONSET;
-            }
-        }
-        // Patients <= 30 ans
-        else {
-            if (isMale) {
-                if (triggerTermsCount >= 3 && triggerTermsCount <= 4) {
-                    return RiskLevel.IN_DANGER;
-                } else if (triggerTermsCount >= 5) {
-                    return RiskLevel.EARLY_ONSET;
-                }
-            } else if (isFemale) {
-                if (triggerTermsCount >= 4 && triggerTermsCount <= 6) {
-                    return RiskLevel.IN_DANGER;
-                } else if (triggerTermsCount >= 7) {
-                    return RiskLevel.EARLY_ONSET;
-                }
-            }
-        }
-
-        // Cas par défaut (nombre de termes insuffisant pour déclencher un risque)
-        return RiskLevel.NONE;
     }
 }

@@ -29,9 +29,11 @@ import static org.assertj.core.api.Assertions.assertThat;
  * Frontend (test-frontend) → Gateway → Patient Service (test-patient)
  *                                  → Notes Service (test-notes)
  */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@SpringBootTest(
+        webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
+        classes = com.mediscreen.gateway.GatewayServiceApplication.class
+)
 @AutoConfigureWebTestClient
-@ActiveProfiles("test")
 @TestPropertySource(properties = {
     "AUTH_USERNAME=test-frontend",
     "AUTH_PASSWORD=test-pass",

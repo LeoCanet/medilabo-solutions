@@ -6,7 +6,6 @@ import com.mediscreen.assessmentservice.dto.AdresseDto;
 import com.mediscreen.assessmentservice.dto.NoteDto;
 import com.mediscreen.assessmentservice.dto.PatientDto;
 import com.mediscreen.assessmentservice.enums.RiskLevel;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -19,15 +18,23 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
 
 /**
- * Tests unitaires pour AssessmentService
- * Teste l'algorithme d'évaluation du risque diabète avec des mocks
+ * Tests unitaires AssessmentService (Orchestration)
+ *
+ * Focus : Coordination des appels aux services externes
+ * Architecture : Séparation responsabilités (recommandations mentor)
+ * - Tests algorithme → DiabetesRiskCalculatorTest (18 tests SANS mocks)
+ * - Tests orchestration → AssessmentServiceTest (ces tests)
+ *
+ * Avantages :
+ * - Tests orchestration simples et ciblés
+ * - Mock du calculateur (algorithme testé ailleurs)
+ * - Validation coordination services
  */
-@DisplayName("Tests unitaires - AssessmentService")
+@DisplayName("Tests unitaires - AssessmentService (Orchestration)")
 @ExtendWith(MockitoExtension.class)
 class AssessmentServiceTest {
 
@@ -40,350 +47,159 @@ class AssessmentServiceTest {
     @Mock
     private DiabetesTermsService diabetesTermsService;
 
+    @Mock
+    private DiabetesRiskCalculator riskCalculator;
+
     @InjectMocks
     private AssessmentService assessmentService;
 
-    private PatientDto patientMale30;
-    private PatientDto patientFemale30;
-    private PatientDto patientMaleYoung;
-    private PatientDto patientFemaleYoung;
-    private PatientDto patientOld;
-
-    @BeforeEach
-    void setUp() {
-        // Patient homme 30 ans exactement
-        patientMale30 = new PatientDto(
+    @Test
+    @DisplayName("Orchestration : Doit coordonner tous les services et retourner le risque calculé")
+    void shouldOrchestrateAllServicesAndReturnCalculatedRisk() {
+        // Given
+        Long patientId = 1L;
+        PatientDto patient = new PatientDto(
                 1L,
-                "Test",
-                "Male30",
-                LocalDate.now().minusYears(30),
+                "John",
+                "Doe",
+                LocalDate.of(1990, 1, 1),
                 "M",
                 "111-222-3333",
                 new AdresseDto("1 Test St", null, null, null)
         );
 
-        // Patient femme 30 ans exactement
-        patientFemale30 = new PatientDto(
+        List<NoteDto> notes = List.of(
+                new NoteDto("1", 1, "Note 1", "Fumeur", LocalDateTime.now()),
+                new NoteDto("2", 1, "Note 2", "Cholestérol", LocalDateTime.now())
+        );
+
+        // Mock des appels externes
+        when(patientApiClient.getPatientById(patientId)).thenReturn(patient);
+        when(notesApiClient.getNotesByPatientId(1)).thenReturn(notes);
+        when(diabetesTermsService.countTriggerTerms(anyString())).thenReturn(2);
+        when(riskCalculator.calculateRisk(anyInt(), anyBoolean(), eq(2)))
+                .thenReturn(RiskLevel.BORDERLINE);
+
+        // When
+        RiskLevel result = assessmentService.assessDiabetesRisk(patientId);
+
+        // Then
+        assertThat(result).isEqualTo(RiskLevel.BORDERLINE);
+
+        // Vérification orchestration complète dans le bon ordre
+        verify(patientApiClient).getPatientById(patientId);
+        verify(notesApiClient).getNotesByPatientId(1);
+        verify(diabetesTermsService).countTriggerTerms(anyString());
+        verify(riskCalculator).calculateRisk(
+                patient.getAge(),
+                patient.isMale(),
+                2
+        );
+    }
+
+    @Test
+    @DisplayName("Orchestration : Doit combiner toutes les notes avant comptage termes")
+    void shouldCombineAllNotesBeforeCountingTerms() {
+        // Given
+        Long patientId = 2L;
+        PatientDto patient = new PatientDto(
                 2L,
-                "Test",
-                "Female30",
-                LocalDate.now().minusYears(30),
+                "Jane",
+                "Smith",
+                LocalDate.of(1985, 6, 15),
                 "F",
                 "222-333-4444",
-                new AdresseDto("2 Test St", null, null, null)
+                null
         );
 
-        // Patient homme 25 ans (jeune)
-        patientMaleYoung = new PatientDto(
+        List<NoteDto> notes = List.of(
+                new NoteDto("1", 2, "Note 1", "Fumeur anormal", LocalDateTime.now()),
+                new NoteDto("2", 2, "Note 2", "Cholestérol réaction", LocalDateTime.now()),
+                new NoteDto("3", 2, "Note 3", "Vertige", LocalDateTime.now())
+        );
+
+        when(patientApiClient.getPatientById(patientId)).thenReturn(patient);
+        when(notesApiClient.getNotesByPatientId(2)).thenReturn(notes);
+        when(diabetesTermsService.countTriggerTerms(" Fumeur anormal Cholestérol réaction Vertige"))
+                .thenReturn(5);
+        when(riskCalculator.calculateRisk(anyInt(), anyBoolean(), eq(5)))
+                .thenReturn(RiskLevel.BORDERLINE);
+
+        // When
+        RiskLevel result = assessmentService.assessDiabetesRisk(patientId);
+
+        // Then
+        assertThat(result).isEqualTo(RiskLevel.BORDERLINE);
+
+        // Vérification combinaison notes (reduce ajoute espace au début)
+        verify(diabetesTermsService).countTriggerTerms(" Fumeur anormal Cholestérol réaction Vertige");
+    }
+
+    @Test
+    @DisplayName("Orchestration : Doit passer les bonnes données au calculateur (âge, genre, termes)")
+    void shouldPassCorrectDataToCalculator() {
+        // Given
+        Long patientId = 3L;
+        PatientDto patientYoungMale = new PatientDto(
                 3L,
-                "Test",
-                "MaleYoung",
-                LocalDate.now().minusYears(25),
+                "Young",
+                "Male",
+                LocalDate.now().minusYears(25), // 25 ans
                 "M",
                 "333-444-5555",
-                new AdresseDto("3 Test St", null, null, null)
+                null
         );
 
-        // Patient femme 25 ans (jeune)
-        patientFemaleYoung = new PatientDto(
+        when(patientApiClient.getPatientById(patientId)).thenReturn(patientYoungMale);
+        when(notesApiClient.getNotesByPatientId(3)).thenReturn(List.of());
+        when(diabetesTermsService.countTriggerTerms(anyString())).thenReturn(4);
+        when(riskCalculator.calculateRisk(25, true, 4))
+                .thenReturn(RiskLevel.IN_DANGER);
+
+        // When
+        RiskLevel result = assessmentService.assessDiabetesRisk(patientId);
+
+        // Then
+        assertThat(result).isEqualTo(RiskLevel.IN_DANGER);
+
+        // Vérification paramètres exacts passés au calculateur
+        verify(riskCalculator).calculateRisk(
+                25,      // âge exact
+                true,    // isMale
+                4        // termes comptés
+        );
+    }
+
+    @Test
+    @DisplayName("Orchestration : Doit gérer patient sans notes (liste vide)")
+    void shouldHandlePatientWithoutNotes() {
+        // Given
+        Long patientId = 4L;
+        PatientDto patient = new PatientDto(
                 4L,
-                "Test",
-                "FemaleYoung",
-                LocalDate.now().minusYears(25),
+                "No",
+                "Notes",
+                LocalDate.of(1980, 3, 10),
                 "F",
                 "444-555-6666",
-                new AdresseDto("4 Test St", null, null, null)
+                null
         );
 
-        // Patient 65 ans (âgé)
-        patientOld = new PatientDto(
-                5L,
-                "Test",
-                "Old",
-                LocalDate.now().minusYears(65),
-                "M",
-                "555-666-7777",
-                new AdresseDto("5 Test St", null, null, null)
-        );
-    }
-
-    // ========== TESTS NONE (0 terme) ==========
-
-    @Test
-    @DisplayName("Devrait retourner NONE quand 0 terme déclencheur")
-    void shouldReturnNoneWhenZeroTriggerTerms() {
-        // Given
-        when(patientApiClient.getPatientById(1L)).thenReturn(patientMale30);
-        when(notesApiClient.getNotesByPatientId(anyInt())).thenReturn(List.of());
-        when(diabetesTermsService.countTriggerTerms(any())).thenReturn(0);
+        when(patientApiClient.getPatientById(patientId)).thenReturn(patient);
+        when(notesApiClient.getNotesByPatientId(4)).thenReturn(List.of()); // Aucune note
+        when(diabetesTermsService.countTriggerTerms("")).thenReturn(0);
+        when(riskCalculator.calculateRisk(anyInt(), anyBoolean(), eq(0)))
+                .thenReturn(RiskLevel.NONE);
 
         // When
-        RiskLevel risk = assessmentService.assessDiabetesRisk(1L);
+        RiskLevel result = assessmentService.assessDiabetesRisk(patientId);
 
         // Then
-        assertThat(risk).isEqualTo(RiskLevel.NONE);
-    }
+        assertThat(result).isEqualTo(RiskLevel.NONE);
 
-    // ========== TESTS BORDERLINE (>30 ans, 2-5 termes) ==========
-
-    @Test
-    @DisplayName("Devrait retourner BORDERLINE pour patient >30 ans avec 2 termes")
-    void shouldReturnBorderlineWhenOver30With2Terms() {
-        // Given
-        when(patientApiClient.getPatientById(5L)).thenReturn(patientOld);
-        when(notesApiClient.getNotesByPatientId(anyInt())).thenReturn(List.of(
-                new NoteDto("1", 5, "Test Old", "Note avec anormal", LocalDateTime.now())
-        ));
-        when(diabetesTermsService.countTriggerTerms(any())).thenReturn(2);
-
-        // When
-        RiskLevel risk = assessmentService.assessDiabetesRisk(5L);
-
-        // Then
-        assertThat(risk).isEqualTo(RiskLevel.BORDERLINE);
-    }
-
-    @Test
-    @DisplayName("Devrait retourner BORDERLINE pour patient >30 ans avec 5 termes")
-    void shouldReturnBorderlineWhenOver30With5Terms() {
-        // Given
-        when(patientApiClient.getPatientById(5L)).thenReturn(patientOld);
-        when(notesApiClient.getNotesByPatientId(anyInt())).thenReturn(List.of(
-                new NoteDto("1", 5, "Test Old", "Note", LocalDateTime.now())
-        ));
-        when(diabetesTermsService.countTriggerTerms(any())).thenReturn(5);
-
-        // When
-        RiskLevel risk = assessmentService.assessDiabetesRisk(5L);
-
-        // Then
-        assertThat(risk).isEqualTo(RiskLevel.BORDERLINE);
-    }
-
-    // ========== TESTS IN_DANGER ==========
-
-    @Test
-    @DisplayName("Devrait retourner IN_DANGER pour homme <30 ans avec 3 termes")
-    void shouldReturnInDangerForMaleUnder30With3Terms() {
-        // Given
-        when(patientApiClient.getPatientById(3L)).thenReturn(patientMaleYoung);
-        when(notesApiClient.getNotesByPatientId(anyInt())).thenReturn(List.of(
-                new NoteDto("1", 3, "Test MaleYoung", "Note", LocalDateTime.now())
-        ));
-        when(diabetesTermsService.countTriggerTerms(any())).thenReturn(3);
-
-        // When
-        RiskLevel risk = assessmentService.assessDiabetesRisk(3L);
-
-        // Then
-        assertThat(risk).isEqualTo(RiskLevel.IN_DANGER);
-    }
-
-    @Test
-    @DisplayName("Devrait retourner IN_DANGER pour homme <30 ans avec 4 termes")
-    void shouldReturnInDangerForMaleUnder30With4Terms() {
-        // Given
-        when(patientApiClient.getPatientById(3L)).thenReturn(patientMaleYoung);
-        when(notesApiClient.getNotesByPatientId(anyInt())).thenReturn(List.of(
-                new NoteDto("1", 3, "Test MaleYoung", "Note", LocalDateTime.now())
-        ));
-        when(diabetesTermsService.countTriggerTerms(any())).thenReturn(4);
-
-        // When
-        RiskLevel risk = assessmentService.assessDiabetesRisk(3L);
-
-        // Then
-        assertThat(risk).isEqualTo(RiskLevel.IN_DANGER);
-    }
-
-    @Test
-    @DisplayName("Devrait retourner IN_DANGER pour femme <30 ans avec 4 termes")
-    void shouldReturnInDangerForFemaleUnder30With4Terms() {
-        // Given
-        when(patientApiClient.getPatientById(4L)).thenReturn(patientFemaleYoung);
-        when(notesApiClient.getNotesByPatientId(anyInt())).thenReturn(List.of(
-                new NoteDto("1", 4, "Test FemaleYoung", "Note", LocalDateTime.now())
-        ));
-        when(diabetesTermsService.countTriggerTerms(any())).thenReturn(4);
-
-        // When
-        RiskLevel risk = assessmentService.assessDiabetesRisk(4L);
-
-        // Then
-        assertThat(risk).isEqualTo(RiskLevel.IN_DANGER);
-    }
-
-    @Test
-    @DisplayName("Devrait retourner IN_DANGER pour femme <30 ans avec 6 termes")
-    void shouldReturnInDangerForFemaleUnder30With6Terms() {
-        // Given
-        when(patientApiClient.getPatientById(4L)).thenReturn(patientFemaleYoung);
-        when(notesApiClient.getNotesByPatientId(anyInt())).thenReturn(List.of(
-                new NoteDto("1", 4, "Test FemaleYoung", "Note", LocalDateTime.now())
-        ));
-        when(diabetesTermsService.countTriggerTerms(any())).thenReturn(6);
-
-        // When
-        RiskLevel risk = assessmentService.assessDiabetesRisk(4L);
-
-        // Then
-        assertThat(risk).isEqualTo(RiskLevel.IN_DANGER);
-    }
-
-    @Test
-    @DisplayName("Devrait retourner IN_DANGER pour patient >30 ans avec 6 termes")
-    void shouldReturnInDangerForOver30With6Terms() {
-        // Given
-        when(patientApiClient.getPatientById(5L)).thenReturn(patientOld);
-        when(notesApiClient.getNotesByPatientId(anyInt())).thenReturn(List.of(
-                new NoteDto("1", 5, "Test Old", "Note", LocalDateTime.now())
-        ));
-        when(diabetesTermsService.countTriggerTerms(any())).thenReturn(6);
-
-        // When
-        RiskLevel risk = assessmentService.assessDiabetesRisk(5L);
-
-        // Then
-        assertThat(risk).isEqualTo(RiskLevel.IN_DANGER);
-    }
-
-    @Test
-    @DisplayName("Devrait retourner IN_DANGER pour patient >30 ans avec 7 termes")
-    void shouldReturnInDangerForOver30With7Terms() {
-        // Given
-        when(patientApiClient.getPatientById(5L)).thenReturn(patientOld);
-        when(notesApiClient.getNotesByPatientId(anyInt())).thenReturn(List.of(
-                new NoteDto("1", 5, "Test Old", "Note", LocalDateTime.now())
-        ));
-        when(diabetesTermsService.countTriggerTerms(any())).thenReturn(7);
-
-        // When
-        RiskLevel risk = assessmentService.assessDiabetesRisk(5L);
-
-        // Then
-        assertThat(risk).isEqualTo(RiskLevel.IN_DANGER);
-    }
-
-    // ========== TESTS EARLY_ONSET ==========
-
-    @Test
-    @DisplayName("Devrait retourner EARLY_ONSET pour homme <30 ans avec 5 termes")
-    void shouldReturnEarlyOnsetForMaleUnder30With5Terms() {
-        // Given
-        when(patientApiClient.getPatientById(3L)).thenReturn(patientMaleYoung);
-        when(notesApiClient.getNotesByPatientId(anyInt())).thenReturn(List.of(
-                new NoteDto("1", 3, "Test MaleYoung", "Note", LocalDateTime.now())
-        ));
-        when(diabetesTermsService.countTriggerTerms(any())).thenReturn(5);
-
-        // When
-        RiskLevel risk = assessmentService.assessDiabetesRisk(3L);
-
-        // Then
-        assertThat(risk).isEqualTo(RiskLevel.EARLY_ONSET);
-    }
-
-    @Test
-    @DisplayName("Devrait retourner EARLY_ONSET pour femme <30 ans avec 7 termes")
-    void shouldReturnEarlyOnsetForFemaleUnder30With7Terms() {
-        // Given
-        when(patientApiClient.getPatientById(4L)).thenReturn(patientFemaleYoung);
-        when(notesApiClient.getNotesByPatientId(anyInt())).thenReturn(List.of(
-                new NoteDto("1", 4, "Test FemaleYoung", "Note", LocalDateTime.now())
-        ));
-        when(diabetesTermsService.countTriggerTerms(any())).thenReturn(7);
-
-        // When
-        RiskLevel risk = assessmentService.assessDiabetesRisk(4L);
-
-        // Then
-        assertThat(risk).isEqualTo(RiskLevel.EARLY_ONSET);
-    }
-
-    @Test
-    @DisplayName("Devrait retourner EARLY_ONSET pour patient >30 ans avec 8 termes")
-    void shouldReturnEarlyOnsetForOver30With8Terms() {
-        // Given
-        when(patientApiClient.getPatientById(5L)).thenReturn(patientOld);
-        when(notesApiClient.getNotesByPatientId(anyInt())).thenReturn(List.of(
-                new NoteDto("1", 5, "Test Old", "Note", LocalDateTime.now())
-        ));
-        when(diabetesTermsService.countTriggerTerms(any())).thenReturn(8);
-
-        // When
-        RiskLevel risk = assessmentService.assessDiabetesRisk(5L);
-
-        // Then
-        assertThat(risk).isEqualTo(RiskLevel.EARLY_ONSET);
-    }
-
-    @Test
-    @DisplayName("Devrait retourner EARLY_ONSET pour patient >30 ans avec 10 termes")
-    void shouldReturnEarlyOnsetForOver30With10Terms() {
-        // Given
-        when(patientApiClient.getPatientById(5L)).thenReturn(patientOld);
-        when(notesApiClient.getNotesByPatientId(anyInt())).thenReturn(List.of(
-                new NoteDto("1", 5, "Test Old", "Note", LocalDateTime.now())
-        ));
-        when(diabetesTermsService.countTriggerTerms(any())).thenReturn(10);
-
-        // When
-        RiskLevel risk = assessmentService.assessDiabetesRisk(5L);
-
-        // Then
-        assertThat(risk).isEqualTo(RiskLevel.EARLY_ONSET);
-    }
-
-    // ========== TESTS CAS LIMITES ==========
-
-    @Test
-    @DisplayName("Devrait retourner NONE pour homme <30 ans avec 2 termes (insuffisant)")
-    void shouldReturnNoneForMaleUnder30With2Terms() {
-        // Given
-        when(patientApiClient.getPatientById(3L)).thenReturn(patientMaleYoung);
-        when(notesApiClient.getNotesByPatientId(anyInt())).thenReturn(List.of(
-                new NoteDto("1", 3, "Test MaleYoung", "Note", LocalDateTime.now())
-        ));
-        when(diabetesTermsService.countTriggerTerms(any())).thenReturn(2);
-
-        // When
-        RiskLevel risk = assessmentService.assessDiabetesRisk(3L);
-
-        // Then
-        assertThat(risk).isEqualTo(RiskLevel.NONE);
-    }
-
-    @Test
-    @DisplayName("Devrait retourner NONE pour femme <30 ans avec 3 termes (insuffisant)")
-    void shouldReturnNoneForFemaleUnder30With3Terms() {
-        // Given
-        when(patientApiClient.getPatientById(4L)).thenReturn(patientFemaleYoung);
-        when(notesApiClient.getNotesByPatientId(anyInt())).thenReturn(List.of(
-                new NoteDto("1", 4, "Test FemaleYoung", "Note", LocalDateTime.now())
-        ));
-        when(diabetesTermsService.countTriggerTerms(any())).thenReturn(3);
-
-        // When
-        RiskLevel risk = assessmentService.assessDiabetesRisk(4L);
-
-        // Then
-        assertThat(risk).isEqualTo(RiskLevel.NONE);
-    }
-
-    @Test
-    @DisplayName("Devrait retourner NONE pour patient >30 ans avec 1 terme (insuffisant)")
-    void shouldReturnNoneForOver30With1Term() {
-        // Given
-        when(patientApiClient.getPatientById(5L)).thenReturn(patientOld);
-        when(notesApiClient.getNotesByPatientId(anyInt())).thenReturn(List.of(
-                new NoteDto("1", 5, "Test Old", "Note", LocalDateTime.now())
-        ));
-        when(diabetesTermsService.countTriggerTerms(any())).thenReturn(1);
-
-        // When
-        RiskLevel risk = assessmentService.assessDiabetesRisk(5L);
-
-        // Then
-        assertThat(risk).isEqualTo(RiskLevel.NONE);
+        // Vérification appels même avec liste vide
+        verify(notesApiClient).getNotesByPatientId(4);
+        verify(diabetesTermsService).countTriggerTerms("");
+        verify(riskCalculator).calculateRisk(patient.getAge(), patient.isMale(), 0);
     }
 }

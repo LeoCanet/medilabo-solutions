@@ -25,9 +25,11 @@ import java.util.Base64;
  * Architecture testée :
  * Frontend (credentials frontend) → Gateway → Services (credentials spécifiques)
  */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@SpringBootTest(
+        webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
+        classes = com.mediscreen.gateway.GatewayServiceApplication.class
+)
 @AutoConfigureWebTestClient
-@ActiveProfiles("test")
 @TestPropertySource(properties = {
     "AUTH_USERNAME=test-frontend",
     "AUTH_PASSWORD=test-pass",
