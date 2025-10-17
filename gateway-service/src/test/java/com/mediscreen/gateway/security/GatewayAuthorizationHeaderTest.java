@@ -31,7 +31,7 @@ import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMoc
  * Tests WireMock - Injection headers Authorization par Gateway
  *
  * OBJECTIF : Vérifier que la Gateway injecte les bons credentials Basic Auth
- * vers chaque microservice backend (recommandation mentor)
+ * vers chaque microservice backend
  *
  * ARCHITECTURE TESTÉE :
  * - Frontend → Gateway (avec credentials frontend)

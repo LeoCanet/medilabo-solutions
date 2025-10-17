@@ -1,9 +1,6 @@
 package com.mediscreen.assessmentservice.controller;
 
-import com.mediscreen.assessmentservice.client.PatientApiClient;
 import com.mediscreen.assessmentservice.dto.AssessmentResponse;
-import com.mediscreen.assessmentservice.dto.PatientDto;
-import com.mediscreen.assessmentservice.enums.RiskLevel;
 import com.mediscreen.assessmentservice.service.AssessmentService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -16,8 +13,15 @@ import org.springframework.web.bind.annotation.*;
 /**
  * Contrôleur REST pour l'évaluation du risque diabète
  *
- * Expose l'API /api/v1/assess pour les évaluations de risque.
- * Utilisé par le frontend et potentiellement d'autres services.
+ * Responsabilité UNIQUE : Gestion de la couche HTTP
+ * - Réception des requêtes HTTP
+ * - Validation des paramètres
+ * - Délégation au service métier
+ * - Retour des réponses HTTP
+ *
+ * Architecture : Séparation claire Controller vs Service
+ * - Ce controller ne contient AUCUNE logique métier
+ * - Toute la logique est déléguée à AssessmentService
  */
 @Slf4j
 @RestController
@@ -27,10 +31,14 @@ import org.springframework.web.bind.annotation.*;
 public class AssessmentController {
 
     private final AssessmentService assessmentService;
-    private final PatientApiClient patientApiClient;
 
     /**
      * Évalue le risque diabète d'un patient
+     *
+     * Responsabilité : Gestion HTTP uniquement
+     * - Log de la requête
+     * - Délégation au service métier
+     * - Retour de la réponse HTTP
      *
      * @param patientId ID du patient à évaluer
      * @return AssessmentResponse avec le niveau de risque et les détails
@@ -45,17 +53,11 @@ public class AssessmentController {
         log.info("Requête d'évaluation reçue pour patient ID: {}", patientId);
 
         try {
-            // Calculer le niveau de risque
-            RiskLevel riskLevel = assessmentService.assessDiabetesRisk(patientId);
-
-            // Récupérer les informations patient pour la réponse
-            PatientDto patient = patientApiClient.getPatientById(patientId);
-
-            // Construire la réponse
-            AssessmentResponse response = AssessmentResponse.of(patient, riskLevel);
+            // Délégation complète au service (AUCUNE logique métier ici)
+            AssessmentResponse response = assessmentService.getAssessmentResponse(patientId);
 
             log.info("Évaluation réussie pour patient ID: {} - Risque: {}",
-                    patientId, riskLevel);
+                    patientId, response.riskLevel());
 
             return ResponseEntity.ok(response);
 

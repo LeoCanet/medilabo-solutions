@@ -3,6 +3,7 @@ package com.mediscreen.assessmentservice.service;
 import com.mediscreen.assessmentservice.client.NotesApiClient;
 import com.mediscreen.assessmentservice.client.PatientApiClient;
 import com.mediscreen.assessmentservice.dto.AdresseDto;
+import com.mediscreen.assessmentservice.dto.AssessmentResponse;
 import com.mediscreen.assessmentservice.dto.NoteDto;
 import com.mediscreen.assessmentservice.dto.PatientDto;
 import com.mediscreen.assessmentservice.enums.RiskLevel;
@@ -25,7 +26,7 @@ import static org.mockito.Mockito.*;
  * Tests unitaires AssessmentService (Orchestration)
  *
  * Focus : Coordination des appels aux services externes
- * Architecture : Séparation responsabilités (recommandations mentor)
+ * Architecture : Séparation responsabilités
  * - Tests algorithme → DiabetesRiskCalculatorTest (18 tests SANS mocks)
  * - Tests orchestration → AssessmentServiceTest (ces tests)
  *
@@ -201,5 +202,50 @@ class AssessmentServiceTest {
         verify(notesApiClient).getNotesByPatientId(4);
         verify(diabetesTermsService).countTriggerTerms("");
         verify(riskCalculator).calculateRisk(patient.getAge(), patient.isMale(), 0);
+    }
+
+    @Test
+    @DisplayName("Réponse complète : Doit construire AssessmentResponse avec toutes les infos patient")
+    void shouldBuildCompleteAssessmentResponse() {
+        // Given
+        Long patientId = 5L;
+        PatientDto patient = new PatientDto(
+                5L,
+                "Test",
+                "TestBorderline",
+                LocalDate.of(1945, 6, 24), // > 30 ans
+                "M",
+                "200-333-4444",
+                new AdresseDto("2 High St", null, null, null)
+        );
+
+        List<NoteDto> notes = List.of(
+                new NoteDto("1", 5, "Note 1", "Anormal", LocalDateTime.now()),
+                new NoteDto("2", 5, "Note 2", "Réaction", LocalDateTime.now())
+        );
+
+        // Mock complet pour assessDiabetesRisk (appelé en interne)
+        when(patientApiClient.getPatientById(patientId)).thenReturn(patient);
+        when(notesApiClient.getNotesByPatientId(5)).thenReturn(notes);
+        when(diabetesTermsService.countTriggerTerms(anyString())).thenReturn(2);
+        when(riskCalculator.calculateRisk(anyInt(), anyBoolean(), eq(2)))
+                .thenReturn(RiskLevel.BORDERLINE);
+
+        // When
+        AssessmentResponse response = assessmentService.getAssessmentResponse(patientId);
+
+        // Then - Vérification réponse complète construite
+        assertThat(response).isNotNull();
+        assertThat(response.patientId()).isEqualTo(5L);
+        assertThat(response.patientName()).isEqualTo("Test TestBorderline");
+        assertThat(response.patientAge()).isEqualTo(patient.getAge());
+        assertThat(response.patientGender()).isEqualTo("M");
+        assertThat(response.riskLevel()).isEqualTo(RiskLevel.BORDERLINE);
+        assertThat(response.riskDescription()).isEqualTo(RiskLevel.BORDERLINE.getDescription());
+        assertThat(response.assessmentDate()).isNotNull();
+
+        // Vérification que le service a bien appelé patientApiClient 2 fois
+        // (une fois dans assessDiabetesRisk, une fois dans getAssessmentResponse)
+        verify(patientApiClient, times(2)).getPatientById(patientId);
     }
 }

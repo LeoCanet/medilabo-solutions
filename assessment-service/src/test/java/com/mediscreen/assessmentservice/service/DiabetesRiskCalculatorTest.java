@@ -17,7 +17,6 @@ import static org.assertj.core.api.Assertions.assertThat;
  * - Tests ultra-rapides (pas de contexte Spring, pas de mocks)
  * - Lisibilité parfaite
  * - Couverture exhaustive facile
- * - Conformité recommandations mentor (séparation responsabilités)
  */
 @DisplayName("Tests unitaires - DiabetesRiskCalculator (algorithme pur)")
 class DiabetesRiskCalculatorTest {

@@ -2,6 +2,7 @@ package com.mediscreen.assessmentservice.service;
 
 import com.mediscreen.assessmentservice.client.NotesApiClient;
 import com.mediscreen.assessmentservice.client.PatientApiClient;
+import com.mediscreen.assessmentservice.dto.AssessmentResponse;
 import com.mediscreen.assessmentservice.dto.NoteDto;
 import com.mediscreen.assessmentservice.dto.PatientDto;
 import com.mediscreen.assessmentservice.enums.RiskLevel;
@@ -36,7 +37,28 @@ public class AssessmentService {
     private final DiabetesRiskCalculator riskCalculator;
 
     /**
-     * Évalue le risque diabète d'un patient
+     * Récupère l'évaluation complète du risque diabète d'un patient
+     * (Méthode utilisée par le controller pour obtenir la réponse complète)
+     *
+     * @param patientId ID du patient
+     * @return AssessmentResponse avec toutes les informations patient et le risque
+     */
+    public AssessmentResponse getAssessmentResponse(Long patientId) {
+        log.info("Récupération évaluation complète pour patient ID: {}", patientId);
+
+        // 1. Calculer le niveau de risque (orchestration interne)
+        RiskLevel riskLevel = assessDiabetesRisk(patientId);
+
+        // 2. Récupérer les informations patient pour la réponse
+        PatientDto patient = patientApiClient.getPatientById(patientId);
+
+        // 3. Construire et retourner la réponse complète
+        return AssessmentResponse.of(patient, riskLevel);
+    }
+
+    /**
+     * Évalue le risque diabète d'un patient (algorithme seul)
+     *
      * @param patientId ID du patient
      * @return niveau de risque calculé
      */
