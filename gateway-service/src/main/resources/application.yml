@@ -48,4 +48,12 @@ mediscreen:
     assessment:
       username: ${AUTH_ASSESSMENT_USERNAME}
       password: ${AUTH_ASSESSMENT_PASSWORD}
+  # URIs des microservices backend (variabilisées pour tests et environnements)
+  services:
+    patient:
+      uri: ${PATIENT_SERVICE_URI:http://patient-service:8081}
+    notes:
+      uri: ${NOTES_SERVICE_URI:http://notes-service:8082}
+    assessment:
+      uri: ${ASSESSMENT_SERVICE_URI:http://assessment-service:8083}
 

@@ -68,6 +68,16 @@ public class SecurityConfig {
     @Value("${mediscreen.auth.assessment.password}")
     private String assessmentPassword;
 
+    // URIs des microservices backend (variabilisées pour tests et environnements)
+    @Value("${mediscreen.services.patient.uri}")
+    private String patientServiceUri;
+
+    @Value("${mediscreen.services.notes.uri}")
+    private String notesServiceUri;
+
+    @Value("${mediscreen.services.assessment.uri}")
+    private String assessmentServiceUri;
+
     @Bean
     public SecurityWebFilterChain securityWebFilterChain(ServerHttpSecurity http) {
         return http
@@ -122,19 +132,19 @@ public class SecurityConfig {
                 .route("patient-service-route", r -> r
                         .path("/api/v1/patients/**")
                         .filters(f -> f.filter(addPatientAuthHeader()))
-                        .uri("http://patient-service:8081")
+                        .uri(patientServiceUri)
                 )
                 // Route Notes Service avec injection automatique credentials notes
                 .route("notes-service-route", r -> r
                         .path("/api/v1/notes/**")
                         .filters(f -> f.filter(addNotesAuthHeader()))
-                        .uri("http://notes-service:8082")
+                        .uri(notesServiceUri)
                 )
                 // Route Assessment Service avec injection automatique credentials assessment
                 .route("assessment-service-route", r -> r
                         .path("/api/v1/assess/**")
                         .filters(f -> f.filter(addAssessmentAuthHeader()))
-                        .uri("http://assessment-service:8083")
+                        .uri(assessmentServiceUri)
                 )
                 .build();
     }

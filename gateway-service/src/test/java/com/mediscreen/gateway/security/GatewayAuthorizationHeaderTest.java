@@ -42,7 +42,8 @@ import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMoc
  * APPROCHE :
  * - @SpringBootTest(classes = WireMockConfig.class) pour charger UNIQUEMENT la config de test
  * - WireMock démarre AVANT Spring via @DynamicPropertySource
- * - Routes de test pointent vers localhost:wiremockPort
+ * - URIs variabilisées (mediscreen.services.*.uri) surchargées avec ports WireMock dynamiques
+ * - Même approche que SecurityConfig de production (injection via @Value)
  */
 @SpringBootTest(
         webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
@@ -85,9 +86,9 @@ class GatewayAuthorizationHeaderTest {
         @Bean
         public RouteLocator testRouteLocator(
                 RouteLocatorBuilder builder,
-                @Value("${wiremock.patient.port}") int patientPort,
-                @Value("${wiremock.notes.port}") int notesPort,
-                @Value("${wiremock.assessment.port}") int assessmentPort,
+                @Value("${mediscreen.services.patient.uri}") String patientServiceUri,
+                @Value("${mediscreen.services.notes.uri}") String notesServiceUri,
+                @Value("${mediscreen.services.assessment.uri}") String assessmentServiceUri,
                 @Value("${mediscreen.auth.patient.username}") String patientUsername,
                 @Value("${mediscreen.auth.patient.password}") String patientPassword,
                 @Value("${mediscreen.auth.notes.username}") String notesUsername,
@@ -99,17 +100,17 @@ class GatewayAuthorizationHeaderTest {
                     .route("patient-service-route", r -> r
                             .path("/api/v1/patients/**")
                             .filters(f -> f.filter(createAuthHeaderFilter(patientUsername, patientPassword)))
-                            .uri("http://localhost:" + patientPort)
+                            .uri(patientServiceUri)
                     )
                     .route("notes-service-route", r -> r
                             .path("/api/v1/notes/**")
                             .filters(f -> f.filter(createAuthHeaderFilter(notesUsername, notesPassword)))
-                            .uri("http://localhost:" + notesPort)
+                            .uri(notesServiceUri)
                     )
                     .route("assessment-service-route", r -> r
                             .path("/api/v1/assess/**")
                             .filters(f -> f.filter(createAuthHeaderFilter(assessmentUsername, assessmentPassword)))
-                            .uri("http://localhost:" + assessmentPort)
+                            .uri(assessmentServiceUri)
                     )
                     .build();
         }
@@ -138,7 +139,7 @@ class GatewayAuthorizationHeaderTest {
 
     /**
      * Démarrage des serveurs WireMock AVANT Spring Boot
-     * Configuration des propriétés dynamiques (ports WireMock + credentials)
+     * Configuration des propriétés dynamiques (URIs WireMock + credentials)
      */
     @DynamicPropertySource
     static void configureWireMockAndCredentials(DynamicPropertyRegistry registry) {
@@ -151,10 +152,10 @@ class GatewayAuthorizationHeaderTest {
         notesServiceMock.start();
         assessmentServiceMock.start();
 
-        // Configuration ports WireMock pour injection dans routes de test
-        registry.add("wiremock.patient.port", patientServiceMock::port);
-        registry.add("wiremock.notes.port", notesServiceMock::port);
-        registry.add("wiremock.assessment.port", assessmentServiceMock::port);
+        // Configuration URIs WireMock pour injection dans routes de test (variabilisées comme en production)
+        registry.add("mediscreen.services.patient.uri", () -> "http://localhost:" + patientServiceMock.port());
+        registry.add("mediscreen.services.notes.uri", () -> "http://localhost:" + notesServiceMock.port());
+        registry.add("mediscreen.services.assessment.uri", () -> "http://localhost:" + assessmentServiceMock.port());
 
         // Configuration credentials backend pour injection dans filtres
         registry.add("mediscreen.auth.patient.username", () -> PATIENT_USERNAME);
@@ -259,5 +260,25 @@ class GatewayAuthorizationHeaderTest {
         WireMock.configureFor("localhost", assessmentServiceMock.port());
         assessmentServiceMock.verify(getRequestedFor(urlPathEqualTo("/api/v1/assess/1"))
                 .withHeader("Authorization", equalTo(ASSESSMENT_AUTH_HEADER)));
+    }
+
+    @Test
+    @DisplayName("Gateway doit retourner 404 pour routes non matchées")
+    void shouldReturn404ForUnmatchedRoutes() {
+        // Given - Chemins non couverts par les routes définies
+        String[] unmatchedPaths = {
+                "/api/v1/other",        // Aucune route pour ce path
+                "/api/v2/patients",     // Mauvaise version API
+                "/patients/api/v1",     // Mauvais ordre du path
+                "/notes/api/v1"         // Mauvais ordre du path
+        };
+
+        // When/Then - Toutes ces requêtes doivent retourner 404
+        for (String path : unmatchedPaths) {
+            webTestClient.get()
+                    .uri(path)
+                    .exchange()
+                    .expectStatus().isNotFound();
+        }
     }
 }
