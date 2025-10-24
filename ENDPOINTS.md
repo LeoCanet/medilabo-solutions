@@ -66,6 +66,26 @@ Service de routage intelligent avec sécurité Basic Auth différenciée par mic
 
 *   **Base URL:** `http://localhost:8888`
 *   **Sécurité:** Basic Auth frontend requis + injection automatique credentials backend
+*   **Architecture:** URIs variabilisées pour configuration flexible et tests optimisés
+
+### Configuration URIs Variabilisées
+
+```yaml
+# application.yml
+mediscreen:
+  services:
+    patient:
+      uri: ${PATIENT_SERVICE_URI:http://patient-service:8081}
+    notes:
+      uri: ${NOTES_SERVICE_URI:http://notes-service:8082}
+    assessment:
+      uri: ${ASSESSMENT_SERVICE_URI:http://assessment-service:8083}
+```
+
+**Avantages** :
+- ✅ Configuration externalisée (comme credentials)
+- ✅ Tests Wiremock avec URIs dynamiques
+- ✅ Cohérence architecture (credentials + URIs variabilisés)
 
 ### Routing Rules avec Tokens Différenciés
 
@@ -134,6 +154,26 @@ Service d'évaluation du risque diabète avec algorithme de détection des terme
 | Method | Path | Description |
 |---|---|---|
 | `GET` | `/api/v1/assess/{patientId}` | Évalue le risque diabète d'un patient (NONE, BORDERLINE, IN_DANGER, EARLY_ONSET). |
+
+### Architecture SRP (Séparation Responsabilités)
+
+**AssessmentService expose 2 méthodes publiques** :
+
+1. **`getAssessmentResponse(Long patientId)`** - Orchestration complète
+   - Récupère patient via PatientApiClient (1 seul appel)
+   - Récupère notes via NotesApiClient
+   - Délègue calcul à assessDiabetesRisk()
+   - Construit AssessmentResponse complète
+   - **Utilisé par** : Controller pour réponse API
+
+2. **`assessDiabetesRisk(PatientDto patient, List<NoteDto> notes)`** - Calcul pur
+   - Combine texte notes
+   - Compte termes déclencheurs
+   - Délègue calcul risque au DiabetesRiskCalculator
+   - Retourne RiskLevel uniquement
+   - **Avantage** : Tests unitaires sans mocks API
+
+**Optimisation Green Code** : -50% appels API (getPatientById appelé 1 fois au lieu de 2)
 
 ### Algorithme d'Évaluation
 
@@ -225,6 +265,10 @@ curl http://localhost:8083/actuator/health  # Assessment
 
 ---
 
-**Architecture microservices complète Sprint 1 + Sprint 2 + Sprint 3 avec sécurité Basic Auth différenciée et pattern Repository découplé.**
+**Architecture microservices complète Sprint 1 + Sprint 2 + Sprint 3 avec :**
+- Sécurité Basic Auth différenciée
+- Pattern Repository découplé
+- URIs variabilisées Gateway
+- Architecture SRP AssessmentService (optimisation -50% appels API)
 
-**Dernière mise à jour** : 10 Octobre 2025 - Sprint 3 TERMINÉ ✅
+**Dernière mise à jour** : 24 Octobre 2025 - Architecture finale optimisée ✅

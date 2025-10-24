@@ -171,6 +171,49 @@ curl http://localhost:8081/api/v1/patients  # ❌ Bloqué
 | 3 | TestInDanger | Test | 20 | M | 2 notes (termes : fumeur, cholestérol) |
 | 4 | TestEarlyOnset | Test | 22 | F | 4 notes (termes multiples) |
 
+## 🧪 Tests et Qualité
+
+### Couverture Tests Complète
+
+**112 tests automatisés** répartis sur tous les microservices :
+
+| Service | Tests | Types | Couverture |
+|---------|-------|-------|------------|
+| **Patient Service** | 28 tests | Unitaires (19) + Intégration (9) | Controllers, Services, Repository |
+| **Notes Service** | 25 tests | Unitaires (16) + Intégration (9) | Controllers, Services, Repository |
+| **Assessment Service** | 21 tests | Unitaires (5) + Intégration (5) + Algorithm (11) | Orchestration, Calcul, 4 cas OpenClassrooms |
+| **Gateway Service** | 38 tests | Wiremock (4) + Sécurité (34) | Routage, Injection credentials, URIs variabilisées |
+
+### Architecture Tests
+
+**Séparation claire responsabilités** :
+- **Tests unitaires** : Logique métier sans mocks API (ex: calcul risque diabète)
+- **Tests intégration** : Orchestration complète avec API mockées
+- **Tests Wiremock** : Gateway avec serveurs mock pour vérifier injection credentials
+- **Tests E2E** : 4 cas patients OpenClassrooms (NONE, BORDERLINE, IN_DANGER, EARLY_ONSET)
+
+### Principes Appliqués
+
+- ✅ **SRP (Single Responsibility Principle)** : Séparation orchestration vs algorithme
+- ✅ **Tests découplés** : Pas de dépendances API dans tests unitaires
+- ✅ **Données test réalistes** : Conformes spécifications OpenClassrooms
+- ✅ **Configuration variabilisée** : URIs et credentials externalisés
+
+### Exécution Tests
+
+```bash
+# Tous les tests (112)
+mvn clean test
+
+# Par service
+cd patient-service && mvn test
+cd notes-service && mvn test
+cd assessment-service && mvn test
+cd gateway-service && mvn test
+
+# Résultat attendu : 112 tests ✅, 0 failures, 0 errors
+```
+
 ## 🛠️ État du Développement
 
 ### ✅ Sprint 1 - TERMINÉ
@@ -194,6 +237,7 @@ curl http://localhost:8081/api/v1/patients  # ❌ Bloqué
 - **Integration** : Navigation complète Patient → Notes → Évaluation
 - **Sécurité** : Assessment autorisé sur Gateway comme service orchestrateur
 - **Tests** : 4 patients de test avec résultats conformes spécifications
+- **Optimisations** : Architecture SRP (orchestration vs calcul), -50% appels API
 
 ## 🗄️ Bases de Données
 
@@ -335,6 +379,14 @@ ENTRYPOINT ["java", "-jar", "app.jar"]
 - 🚀 **Build cache** : Maven dependencies cached entre builds
 - 💾 **Layers optimisés** : Changements code n'impactent pas dependencies
 - 🔒 **Sécurité par défaut** : Non-root user, secrets externalisés
+
+### Optimisations Architecture (Octobre 2025)
+
+**Réduction consommation réseau et CPU** :
+- ⚡ **AssessmentService SRP** : Séparation orchestration vs calcul pur → -50% appels API
+- 🔧 **Gateway URIs variabilisées** : Configuration externalisée, tests optimisés
+- 🧪 **Tests découplés** : Moins de mocks, exécution plus rapide
+- 📊 **Single API call** : getPatientById() appelé 1 fois au lieu de 2
 
 ### 🌿 Suggestions d'Amélioration Green Code
 
