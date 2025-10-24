@@ -40,54 +40,64 @@ public class AssessmentService {
      * Récupère l'évaluation complète du risque diabète d'un patient
      * (Méthode utilisée par le controller pour obtenir la réponse complète)
      *
+     * Responsabilité : Orchestration des appels API + construction de la réponse
+     * - Récupère les données patient et notes via les clients API
+     * - Délègue le calcul du risque à assessDiabetesRisk()
+     * - Construit la réponse complète AssessmentResponse
+     *
      * @param patientId ID du patient
      * @return AssessmentResponse avec toutes les informations patient et le risque
      */
     public AssessmentResponse getAssessmentResponse(Long patientId) {
         log.info("Récupération évaluation complète pour patient ID: {}", patientId);
 
-        // 1. Calculer le niveau de risque (orchestration interne)
-        RiskLevel riskLevel = assessDiabetesRisk(patientId);
-
-        // 2. Récupérer les informations patient pour la réponse
+        // 1. Récupérer les données UNE SEULE FOIS (orchestration)
         PatientDto patient = patientApiClient.getPatientById(patientId);
+        List<NoteDto> notes = notesApiClient.getNotesByPatientId(patientId.intValue());
+        log.debug("Patient récupéré: {} {}, âge: {}, genre: {}",
+                patient.prenom(), patient.nom(), patient.getAge(), patient.genre());
+        log.debug("Nombre de notes récupérées: {}", notes.size());
+
+        // 2. Calculer le risque (délégation au calcul pur)
+        RiskLevel riskLevel = assessDiabetesRisk(patient, notes);
 
         // 3. Construire et retourner la réponse complète
         return AssessmentResponse.of(patient, riskLevel);
     }
 
     /**
-     * Évalue le risque diabète d'un patient (algorithme seul)
+     * Calcule le risque diabète d'un patient (Algorithme pur)
      *
-     * @param patientId ID du patient
+     * Responsabilité : Calcul du risque UNIQUEMENT (sans appels API)
+     * - Combine les notes en texte
+     * - Compte les termes déclencheurs
+     * - Délègue le calcul final au DiabetesRiskCalculator
+     *
+     * Méthode publique pour faciliter les tests unitaires sans mocks API
+     *
+     * @param patient données du patient (âge, genre)
+     * @param notes liste des notes médicales
      * @return niveau de risque calculé
      */
-    public RiskLevel assessDiabetesRisk(Long patientId) {
-        log.info("Début évaluation risque diabète pour patient ID: {}", patientId);
-
-        // 1. Récupérer les informations du patient (âge, genre)
-        PatientDto patient = patientApiClient.getPatientById(patientId);
-        log.debug("Patient récupéré: {} {}, âge: {}, genre: {}",
+    public RiskLevel assessDiabetesRisk(PatientDto patient, List<NoteDto> notes) {
+        log.debug("Calcul risque pour patient: {} {}, âge: {}, genre: {}",
                 patient.prenom(), patient.nom(), patient.getAge(), patient.genre());
 
-        // 2. Récupérer toutes les notes du patient
-        List<NoteDto> notes = notesApiClient.getNotesByPatientId(patientId.intValue());
-        log.debug("Nombre de notes récupérées: {}", notes.size());
-
-        // 3. Préparer les données : combiner toutes les notes en texte
+        // 1. Préparer les données : combiner toutes les notes en texte
         String combinedNotesText = combineNotesText(notes);
 
-        // 4. Compter les termes déclencheurs via le service spécialisé
+        // 2. Compter les termes déclencheurs via le service spécialisé
         int triggerTermsCount = diabetesTermsService.countTriggerTerms(combinedNotesText);
         log.debug("Nombre total de termes déclencheurs: {}", triggerTermsCount);
 
-        // 5. Déléguer le calcul du risque au calculateur spécialisé
+        // 3. Déléguer le calcul du risque au calculateur spécialisé
         RiskLevel riskLevel = riskCalculator.calculateRisk(
             patient.getAge(),
             patient.isMale(),
             triggerTermsCount
         );
-        log.info("Évaluation terminée pour patient ID: {} - Risque: {}", patientId, riskLevel);
+        log.info("Évaluation terminée pour patient {} {} - Risque: {}",
+                patient.prenom(), patient.nom(), riskLevel);
 
         return riskLevel;
     }

@@ -3,6 +3,7 @@ package com.mediscreen.assessmentservice.integration;
 import com.mediscreen.assessmentservice.client.NotesApiClient;
 import com.mediscreen.assessmentservice.client.PatientApiClient;
 import com.mediscreen.assessmentservice.dto.AdresseDto;
+import com.mediscreen.assessmentservice.dto.AssessmentResponse;
 import com.mediscreen.assessmentservice.dto.NoteDto;
 import com.mediscreen.assessmentservice.dto.PatientDto;
 import com.mediscreen.assessmentservice.enums.RiskLevel;
@@ -26,6 +27,11 @@ import static org.mockito.Mockito.when;
 /**
  * Tests d'intégration pour l'évaluation du risque diabète
  * Valide les 4 cas obligatoires OpenClassrooms avec données de test exactes
+ *
+ * Architecture testée :
+ * - getAssessmentResponse(Long) = Orchestration complète (API mockées)
+ * - Services réels : DiabetesTermsService + DiabetesRiskCalculator
+ * - Validation flux complet avec résultats OpenClassrooms attendus
  */
 @SpringBootTest
 @TestPropertySource(properties = {
@@ -259,11 +265,12 @@ class AssessmentIntegrationTest {
         when(notesApiClient.getNotesByPatientId(1)).thenReturn(patient1Notes);
 
         // When
-        RiskLevel risk = assessmentService.assessDiabetesRisk(1L);
+        AssessmentResponse response = assessmentService.getAssessmentResponse(1L);
 
         // Then
-        assertThat(risk).isEqualTo(RiskLevel.NONE);
-        assertThat(patient1None.getAge()).isGreaterThan(30);
+        assertThat(response.riskLevel()).isEqualTo(RiskLevel.NONE);
+        assertThat(response.patientAge()).isGreaterThan(30);
+        assertThat(response.patientName()).isEqualTo("Test TestNone");
     }
 
     @Test
@@ -274,11 +281,12 @@ class AssessmentIntegrationTest {
         when(notesApiClient.getNotesByPatientId(2)).thenReturn(patient2Notes);
 
         // When
-        RiskLevel risk = assessmentService.assessDiabetesRisk(2L);
+        AssessmentResponse response = assessmentService.getAssessmentResponse(2L);
 
         // Then
-        assertThat(risk).isEqualTo(RiskLevel.BORDERLINE);
-        assertThat(patient2Borderline.getAge()).isGreaterThan(30);
+        assertThat(response.riskLevel()).isEqualTo(RiskLevel.BORDERLINE);
+        assertThat(response.patientAge()).isGreaterThan(30);
+        assertThat(response.patientName()).isEqualTo("Test TestBorderline");
     }
 
     @Test
@@ -289,12 +297,13 @@ class AssessmentIntegrationTest {
         when(notesApiClient.getNotesByPatientId(3)).thenReturn(patient3Notes);
 
         // When
-        RiskLevel risk = assessmentService.assessDiabetesRisk(3L);
+        AssessmentResponse response = assessmentService.getAssessmentResponse(3L);
 
         // Then
-        assertThat(risk).isEqualTo(RiskLevel.IN_DANGER);
-        assertThat(patient3InDanger.getAge()).isLessThanOrEqualTo(30);
-        assertThat(patient3InDanger.isMale()).isTrue();
+        assertThat(response.riskLevel()).isEqualTo(RiskLevel.IN_DANGER);
+        assertThat(response.patientAge()).isLessThanOrEqualTo(30);
+        assertThat(response.patientGender()).isEqualTo("M");
+        assertThat(response.patientName()).isEqualTo("Test TestInDanger");
     }
 
     @Test
@@ -305,12 +314,13 @@ class AssessmentIntegrationTest {
         when(notesApiClient.getNotesByPatientId(4)).thenReturn(patient4Notes);
 
         // When
-        RiskLevel risk = assessmentService.assessDiabetesRisk(4L);
+        AssessmentResponse response = assessmentService.getAssessmentResponse(4L);
 
         // Then
-        assertThat(risk).isEqualTo(RiskLevel.EARLY_ONSET);
-        assertThat(patient4EarlyOnset.getAge()).isLessThanOrEqualTo(30);
-        assertThat(patient4EarlyOnset.isFemale()).isTrue();
+        assertThat(response.riskLevel()).isEqualTo(RiskLevel.EARLY_ONSET);
+        assertThat(response.patientAge()).isLessThanOrEqualTo(30);
+        assertThat(response.patientGender()).isEqualTo("F");
+        assertThat(response.patientName()).isEqualTo("Test TestEarlyOnset");
     }
 
     // ========== TEST COMPLET DES 4 CAS EN UNE FOIS ==========
@@ -331,26 +341,26 @@ class AssessmentIntegrationTest {
         when(patientApiClient.getPatientById(4L)).thenReturn(patient4EarlyOnset);
         when(notesApiClient.getNotesByPatientId(4)).thenReturn(patient4Notes);
 
-        // When - Évaluer les 4 patients
-        RiskLevel risk1 = assessmentService.assessDiabetesRisk(1L);
-        RiskLevel risk2 = assessmentService.assessDiabetesRisk(2L);
-        RiskLevel risk3 = assessmentService.assessDiabetesRisk(3L);
-        RiskLevel risk4 = assessmentService.assessDiabetesRisk(4L);
+        // When - Évaluer les 4 patients avec orchestration complète
+        AssessmentResponse response1 = assessmentService.getAssessmentResponse(1L);
+        AssessmentResponse response2 = assessmentService.getAssessmentResponse(2L);
+        AssessmentResponse response3 = assessmentService.getAssessmentResponse(3L);
+        AssessmentResponse response4 = assessmentService.getAssessmentResponse(4L);
 
         // Then - Vérifier les résultats attendus
-        assertThat(risk1)
+        assertThat(response1.riskLevel())
                 .as("Patient 1 (TestNone) devrait être NONE")
                 .isEqualTo(RiskLevel.NONE);
 
-        assertThat(risk2)
+        assertThat(response2.riskLevel())
                 .as("Patient 2 (TestBorderline) devrait être BORDERLINE")
                 .isEqualTo(RiskLevel.BORDERLINE);
 
-        assertThat(risk3)
+        assertThat(response3.riskLevel())
                 .as("Patient 3 (TestInDanger) devrait être IN_DANGER")
                 .isEqualTo(RiskLevel.IN_DANGER);
 
-        assertThat(risk4)
+        assertThat(response4.riskLevel())
                 .as("Patient 4 (TestEarlyOnset) devrait être EARLY_ONSET")
                 .isEqualTo(RiskLevel.EARLY_ONSET);
     }

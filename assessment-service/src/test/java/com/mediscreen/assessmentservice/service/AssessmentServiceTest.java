@@ -23,19 +23,19 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 /**
- * Tests unitaires AssessmentService (Orchestration)
+ * Tests unitaires AssessmentService
  *
- * Focus : Coordination des appels aux services externes
+ * Focus : Tests du calcul de risque SANS mocks des clients API
  * Architecture : Séparation responsabilités
- * - Tests algorithme → DiabetesRiskCalculatorTest (18 tests SANS mocks)
- * - Tests orchestration → AssessmentServiceTest (ces tests)
+ * - assessDiabetesRisk(PatientDto, List<NoteDto>) = Calcul pur (tests sans API clients)
+ * - getAssessmentResponse(Long) = Orchestration (tests avec mocks API)
  *
  * Avantages :
- * - Tests orchestration simples et ciblés
- * - Mock du calculateur (algorithme testé ailleurs)
- * - Validation coordination services
+ * - Tests calcul plus simples (pas de mocks API nécessaires)
+ * - Tests orchestration valident appels API et construction réponse
+ * - Meilleure séparation des préoccupations
  */
-@DisplayName("Tests unitaires - AssessmentService (Orchestration)")
+@DisplayName("Tests unitaires - AssessmentService")
 @ExtendWith(MockitoExtension.class)
 class AssessmentServiceTest {
 
@@ -55,10 +55,9 @@ class AssessmentServiceTest {
     private AssessmentService assessmentService;
 
     @Test
-    @DisplayName("Orchestration : Doit coordonner tous les services et retourner le risque calculé")
-    void shouldOrchestrateAllServicesAndReturnCalculatedRisk() {
+    @DisplayName("Calcul risque : Doit combiner notes, compter termes et calculer risque")
+    void shouldCombineNotesCountTermsAndCalculateRisk() {
         // Given
-        Long patientId = 1L;
         PatientDto patient = new PatientDto(
                 1L,
                 "John",
@@ -74,35 +73,34 @@ class AssessmentServiceTest {
                 new NoteDto("2", 1, "Note 2", "Cholestérol", LocalDateTime.now())
         );
 
-        // Mock des appels externes
-        when(patientApiClient.getPatientById(patientId)).thenReturn(patient);
-        when(notesApiClient.getNotesByPatientId(1)).thenReturn(notes);
+        // Mock du comptage de termes et calcul risque (pas d'API clients)
         when(diabetesTermsService.countTriggerTerms(anyString())).thenReturn(2);
         when(riskCalculator.calculateRisk(anyInt(), anyBoolean(), eq(2)))
                 .thenReturn(RiskLevel.BORDERLINE);
 
         // When
-        RiskLevel result = assessmentService.assessDiabetesRisk(patientId);
+        RiskLevel result = assessmentService.assessDiabetesRisk(patient, notes);
 
         // Then
         assertThat(result).isEqualTo(RiskLevel.BORDERLINE);
 
-        // Vérification orchestration complète dans le bon ordre
-        verify(patientApiClient).getPatientById(patientId);
-        verify(notesApiClient).getNotesByPatientId(1);
+        // Vérification calcul sans appels API
         verify(diabetesTermsService).countTriggerTerms(anyString());
         verify(riskCalculator).calculateRisk(
                 patient.getAge(),
                 patient.isMale(),
                 2
         );
+
+        // Vérification que les API clients ne sont PAS appelés
+        verifyNoInteractions(patientApiClient);
+        verifyNoInteractions(notesApiClient);
     }
 
     @Test
-    @DisplayName("Orchestration : Doit combiner toutes les notes avant comptage termes")
+    @DisplayName("Calcul risque : Doit combiner toutes les notes avant comptage termes")
     void shouldCombineAllNotesBeforeCountingTerms() {
         // Given
-        Long patientId = 2L;
         PatientDto patient = new PatientDto(
                 2L,
                 "Jane",
@@ -119,15 +117,13 @@ class AssessmentServiceTest {
                 new NoteDto("3", 2, "Note 3", "Vertige", LocalDateTime.now())
         );
 
-        when(patientApiClient.getPatientById(patientId)).thenReturn(patient);
-        when(notesApiClient.getNotesByPatientId(2)).thenReturn(notes);
         when(diabetesTermsService.countTriggerTerms(" Fumeur anormal Cholestérol réaction Vertige"))
                 .thenReturn(5);
         when(riskCalculator.calculateRisk(anyInt(), anyBoolean(), eq(5)))
                 .thenReturn(RiskLevel.BORDERLINE);
 
         // When
-        RiskLevel result = assessmentService.assessDiabetesRisk(patientId);
+        RiskLevel result = assessmentService.assessDiabetesRisk(patient, notes);
 
         // Then
         assertThat(result).isEqualTo(RiskLevel.BORDERLINE);
@@ -137,10 +133,9 @@ class AssessmentServiceTest {
     }
 
     @Test
-    @DisplayName("Orchestration : Doit passer les bonnes données au calculateur (âge, genre, termes)")
+    @DisplayName("Calcul risque : Doit passer les bonnes données au calculateur (âge, genre, termes)")
     void shouldPassCorrectDataToCalculator() {
         // Given
-        Long patientId = 3L;
         PatientDto patientYoungMale = new PatientDto(
                 3L,
                 "Young",
@@ -151,14 +146,14 @@ class AssessmentServiceTest {
                 null
         );
 
-        when(patientApiClient.getPatientById(patientId)).thenReturn(patientYoungMale);
-        when(notesApiClient.getNotesByPatientId(3)).thenReturn(List.of());
+        List<NoteDto> notes = List.of();
+
         when(diabetesTermsService.countTriggerTerms(anyString())).thenReturn(4);
         when(riskCalculator.calculateRisk(25, true, 4))
                 .thenReturn(RiskLevel.IN_DANGER);
 
         // When
-        RiskLevel result = assessmentService.assessDiabetesRisk(patientId);
+        RiskLevel result = assessmentService.assessDiabetesRisk(patientYoungMale, notes);
 
         // Then
         assertThat(result).isEqualTo(RiskLevel.IN_DANGER);
@@ -172,10 +167,9 @@ class AssessmentServiceTest {
     }
 
     @Test
-    @DisplayName("Orchestration : Doit gérer patient sans notes (liste vide)")
+    @DisplayName("Calcul risque : Doit gérer patient sans notes (liste vide)")
     void shouldHandlePatientWithoutNotes() {
         // Given
-        Long patientId = 4L;
         PatientDto patient = new PatientDto(
                 4L,
                 "No",
@@ -186,27 +180,26 @@ class AssessmentServiceTest {
                 null
         );
 
-        when(patientApiClient.getPatientById(patientId)).thenReturn(patient);
-        when(notesApiClient.getNotesByPatientId(4)).thenReturn(List.of()); // Aucune note
+        List<NoteDto> notes = List.of(); // Aucune note
+
         when(diabetesTermsService.countTriggerTerms("")).thenReturn(0);
         when(riskCalculator.calculateRisk(anyInt(), anyBoolean(), eq(0)))
                 .thenReturn(RiskLevel.NONE);
 
         // When
-        RiskLevel result = assessmentService.assessDiabetesRisk(patientId);
+        RiskLevel result = assessmentService.assessDiabetesRisk(patient, notes);
 
         // Then
         assertThat(result).isEqualTo(RiskLevel.NONE);
 
         // Vérification appels même avec liste vide
-        verify(notesApiClient).getNotesByPatientId(4);
         verify(diabetesTermsService).countTriggerTerms("");
         verify(riskCalculator).calculateRisk(patient.getAge(), patient.isMale(), 0);
     }
 
     @Test
-    @DisplayName("Réponse complète : Doit construire AssessmentResponse avec toutes les infos patient")
-    void shouldBuildCompleteAssessmentResponse() {
+    @DisplayName("Orchestration : Doit construire AssessmentResponse en appelant API UNE SEULE FOIS")
+    void shouldBuildCompleteAssessmentResponseWithSingleApiCall() {
         // Given
         Long patientId = 5L;
         PatientDto patient = new PatientDto(
@@ -224,7 +217,7 @@ class AssessmentServiceTest {
                 new NoteDto("2", 5, "Note 2", "Réaction", LocalDateTime.now())
         );
 
-        // Mock complet pour assessDiabetesRisk (appelé en interne)
+        // Mock des appels API (orchestration)
         when(patientApiClient.getPatientById(patientId)).thenReturn(patient);
         when(notesApiClient.getNotesByPatientId(5)).thenReturn(notes);
         when(diabetesTermsService.countTriggerTerms(anyString())).thenReturn(2);
@@ -244,8 +237,10 @@ class AssessmentServiceTest {
         assertThat(response.riskDescription()).isEqualTo(RiskLevel.BORDERLINE.getDescription());
         assertThat(response.assessmentDate()).isNotNull();
 
-        // Vérification que le service a bien appelé patientApiClient 2 fois
-        // (une fois dans assessDiabetesRisk, une fois dans getAssessmentResponse)
-        verify(patientApiClient, times(2)).getPatientById(patientId);
+        // Vérification CRITIQUE : API appelée UNE SEULE FOIS (plus de double appel)
+        verify(patientApiClient, times(1)).getPatientById(patientId);
+        verify(notesApiClient, times(1)).getNotesByPatientId(5);
+        verify(diabetesTermsService, times(1)).countTriggerTerms(anyString());
+        verify(riskCalculator, times(1)).calculateRisk(anyInt(), anyBoolean(), eq(2));
     }
 }
