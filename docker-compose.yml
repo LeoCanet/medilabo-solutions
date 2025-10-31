@@ -214,8 +214,6 @@ services:
       AUTH_USERNAME: ${AUTH_ASSESSMENT_USERNAME}
       AUTH_PASSWORD: ${AUTH_ASSESSMENT_PASSWORD}
 
-      # Configuration Java 21 Virtual Threads
-      SPRING_THREADS_VIRTUAL_ENABLED: "true"
     depends_on:
       patient-service:
         condition: service_healthy
