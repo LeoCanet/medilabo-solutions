@@ -72,10 +72,6 @@ services:
 
       # Configuration de l'application
       SPRING_APPLICATION_NAME: patient-service
-      SPRING_PROFILES_ACTIVE: docker
-
-      # Virtual threads Java 21
-      SPRING_THREADS_VIRTUAL_ENABLED: "true"
 
       # Credentials Basic Auth spécifiques Patient Service
       AUTH_USERNAME: ${AUTH_PATIENT_USERNAME}
@@ -103,7 +99,6 @@ services:
       - "8888:8888"
     environment:
       SPRING_APPLICATION_NAME: gateway-service
-      SPRING_PROFILES_ACTIVE: docker
 
       # Credentials Basic Auth différenciés par service
       AUTH_USERNAME: ${AUTH_USERNAME}
@@ -117,8 +112,6 @@ services:
 
       # Routes gérées par customRouteLocator dans SecurityConfig.java
 
-      # Désactiver la vérification de compatibilité
-      SPRING_CLOUD_COMPATIBILITY_VERIFIER_ENABLED: "false"
     depends_on:
       patient-service:
         condition: service_healthy
@@ -143,7 +136,6 @@ services:
       - "8080:8080"
     environment:
       SPRING_APPLICATION_NAME: frontend-service
-      SPRING_PROFILES_ACTIVE: docker
 
       # URL du Gateway
       FEIGN_CLIENT_URL: http://gateway-service:8888
@@ -155,8 +147,6 @@ services:
       # Configuration des logs
       LOGGING_LEVEL_COM_MEDISCREEN_FRONTEND_CLIENT_PATIENTAPICLIENT: DEBUG
 
-      # Désactiver la vérification de compatibilité Spring Cloud
-      SPRING_CLOUD_COMPATIBILITY_VERIFIER_ENABLED: "false"
     depends_on:
       gateway-service:
         condition: service_healthy
@@ -184,10 +174,6 @@ services:
 
       # Configuration de l'application
       SPRING_APPLICATION_NAME: notes-service
-      SPRING_PROFILES_ACTIVE: docker
-
-      # Virtual threads Java 21
-      SPRING_THREADS_VIRTUAL_ENABLED: "true"
 
       # Credentials Basic Auth spécifiques Notes Service
       AUTH_USERNAME: ${AUTH_NOTES_USERNAME}
@@ -196,8 +182,6 @@ services:
       # Configuration des logs
       LOGGING_LEVEL_COM_MEDISCREEN_NOTESSERVICE: DEBUG
 
-      # Désactiver la vérification de compatibilité Spring Cloud
-      SPRING_CLOUD_COMPATIBILITY_VERIFIER_ENABLED: "false"
     depends_on:
       mongodb:
         condition: service_healthy
@@ -222,7 +206,6 @@ services:
     environment:
       # Configuration de l'application
       SPRING_APPLICATION_NAME: assessment-service
-      SPRING_PROFILES_ACTIVE: docker
 
       # URL du Gateway pour communication sécurisée inter-services
       FEIGN_CLIENT_URL: http://gateway-service:8888

@@ -4,23 +4,6 @@ server:
 spring:
   application:
     name: gateway-service
-  cloud:
-    gateway:
-      routes:
-        - id: patient-service-route
-          uri: http://patient-service:8081
-          predicates:
-            - Path=/api/v1/patients/**
-        - id: notes-service-route
-          uri: http://notes-service:8082
-          predicates:
-            - Path=/api/v1/notes/**
-        - id: assessment-service-route
-          uri: http://assessment-service:8083
-          predicates:
-            - Path=/api/v1/assess/**
-    compatibility-verifier:
-      enabled: false
 
 management:
   endpoints:
