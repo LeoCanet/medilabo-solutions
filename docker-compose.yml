@@ -60,6 +60,9 @@ services:
     ports:
       - "8081:8081"
     environment:
+      # Configuration du serveur
+      PATIENT_SERVICE_PORT: ${PATIENT_SERVICE_PORT}
+
       # Configuration de la base de données
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql-db:3306/mediscreen_patients?createDatabaseIfNotExist=true&useUnicode=true&characterEncoding=utf8&useSSL=false&allowPublicKeyRetrieval=true&allowMultiQueries=true
       SPRING_DATASOURCE_USERNAME: ${MYSQL_USER}
@@ -98,6 +101,9 @@ services:
     ports:
       - "8888:8888"
     environment:
+      # Configuration du serveur
+      GATEWAY_SERVICE_PORT: ${GATEWAY_SERVICE_PORT}
+
       SPRING_APPLICATION_NAME: gateway-service
 
       # Credentials Basic Auth différenciés par service
@@ -135,6 +141,9 @@ services:
     ports:
       - "8080:8080"
     environment:
+      # Configuration du serveur
+      FRONTEND_SERVICE_PORT: ${FRONTEND_SERVICE_PORT}
+
       SPRING_APPLICATION_NAME: frontend-service
 
       # URL du Gateway
@@ -168,6 +177,9 @@ services:
     ports:
       - "8082:8082"
     environment:
+      # Configuration du serveur
+      NOTES_SERVICE_PORT: ${NOTES_SERVICE_PORT}
+
       # Configuration MongoDB
       SPRING_DATA_MONGODB_URI: mongodb://${MYSQL_USER}:${MYSQL_PASSWORD}@mongodb:27017/mediscreen_notes?authSource=mediscreen_notes
       SPRING_DATA_MONGODB_DATABASE: mediscreen_notes
@@ -204,6 +216,9 @@ services:
     ports:
       - "8083:8083"
     environment:
+      # Configuration du serveur
+      ASSESSMENT_SERVICE_PORT: ${ASSESSMENT_SERVICE_PORT}
+
       # Configuration de l'application
       SPRING_APPLICATION_NAME: assessment-service
 
