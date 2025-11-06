@@ -400,7 +400,6 @@ ENTRYPOINT ["java", "-jar", "app.jar"]
 - 📊 **Query caching** : Activer caches MySQL et MongoDB pour réduire CPU
 
 #### 3. Optimisation du Code Java
-- ⚡ **Virtual Threads Java 21** : Déjà implémenté, continuer à utiliser
 - 🧠 **Lazy loading** : Charger données uniquement quand nécessaires
 - 📉 **Algorithmes efficaces** : Privilégier streams et opérations O(n)
 

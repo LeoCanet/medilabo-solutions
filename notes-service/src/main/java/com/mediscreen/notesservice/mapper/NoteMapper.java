@@ -36,7 +36,7 @@ public interface NoteMapper {
     Note toEntity(NoteDto noteDto);
 
     /**
-     * Conversion List<Note> -> List<NoteDto> (Virtual Threads compatible)
+     * Conversion List<Note> -> List<NoteDto>
      */
     List<NoteDto> toDtoList(List<Note> notes);
     

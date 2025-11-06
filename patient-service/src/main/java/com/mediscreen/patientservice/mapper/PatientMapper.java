@@ -37,7 +37,7 @@ public interface PatientMapper {
     Patient toEntity(PatientDto patientDto);
 
     /**
-     * Conversion List<Patient> -> List<PatientDto> (Virtual Threads compatible)
+     * Conversion List<Patient> -> List<PatientDto>
      */
     List<PatientDto> toDtoList(List<Patient> patients);
     
