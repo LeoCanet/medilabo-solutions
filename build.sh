@@ -323,6 +323,79 @@ status_services() {
     fi
 }
 
+# Fonction pour générer les rapports JaCoCo et Surefire
+generate_reports() {
+    log "📊 Génération des rapports JaCoCo et Surefire..."
+    info "🐳 Utilisation d'un conteneur Maven temporaire"
+
+    # Vérifier que Docker est disponible
+    if ! command -v docker &> /dev/null; then
+        error "Docker n'est pas accessible"
+        exit 1
+    fi
+
+    # Nettoyer les anciens rapports
+    warning "🧹 Nettoyage des anciens rapports..."
+    rm -rf */target/site/jacoco 2>/dev/null || true
+    rm -rf */target/surefire-reports 2>/dev/null || true
+    rm -rf report-aggregate/target 2>/dev/null || true
+
+    # Lancer Maven dans un conteneur Docker avec accès Docker pour TestContainers
+    log "🔨 Compilation et exécution des tests avec Maven..."
+    info "⏳ Cela peut prendre 2-3 minutes..."
+    info "🐳 Montage du socket Docker pour les tests d'intégration TestContainers"
+    echo ""
+
+    docker run --rm \
+        -v "$(pwd)":/workspace \
+        -v /var/run/docker.sock:/var/run/docker.sock \
+        -v "$HOME/.m2":/root/.m2 \
+        -w /workspace \
+        maven:3.9-eclipse-temurin-21 \
+        mvn clean verify -Dmaven.test.failure.ignore=false
+
+    if [ $? -eq 0 ]; then
+        success "✅ Tests et rapports générés avec succès!"
+        echo ""
+        info "📊 Rapports générés :"
+        echo ""
+        success "  🎯 Rapport agrégé global :"
+        info "     report-aggregate/target/site/jacoco-aggregate/index.html"
+        echo ""
+        success "  📁 Rapports individuels par service :"
+        info "     patient-service/target/site/jacoco/index.html"
+        info "     notes-service/target/site/jacoco/index.html"
+        info "     assessment-service/target/site/jacoco/index.html"
+        info "     frontend-service/target/site/jacoco/index.html"
+        info "     gateway-service/target/site/jacoco/index.html"
+        echo ""
+        success "  📋 Rapports Surefire (résultats tests) :"
+        info "     */target/surefire-reports/"
+        echo ""
+
+        # Proposer d'ouvrir le rapport agrégé
+        if [ -f "report-aggregate/target/site/jacoco-aggregate/index.html" ]; then
+            echo ""
+            read -p "Voulez-vous ouvrir le rapport agrégé dans le navigateur ? (y/N): " -n 1 -r
+            echo
+            if [[ $REPLY =~ ^[Yy]$ ]]; then
+                if command -v xdg-open &> /dev/null; then
+                    xdg-open report-aggregate/target/site/jacoco-aggregate/index.html
+                elif command -v open &> /dev/null; then
+                    open report-aggregate/target/site/jacoco-aggregate/index.html
+                else
+                    warning "Impossible d'ouvrir automatiquement. Ouvrez manuellement le fichier :"
+                    info "file://$(pwd)/report-aggregate/target/site/jacoco-aggregate/index.html"
+                fi
+            fi
+        fi
+    else
+        error "❌ Échec de la génération des rapports"
+        warning "Vérifiez les logs ci-dessus pour identifier le problème"
+        exit 1
+    fi
+}
+
 # Menu principal avec gestion d'erreur
 main() {
     case "${1:-}" in
@@ -346,10 +419,13 @@ main() {
         "status")
             status_services
             ;;
+        "reports")
+            generate_reports
+            ;;
         *)
             echo "🏥 Mediscreen - Script de gestion Docker"
             echo ""
-            echo "Usage: $0 {start|stop|restart|logs|status|clean}"
+            echo "Usage: $0 {start|stop|restart|logs|status|reports|clean}"
             echo ""
             echo "🚀 Commandes disponibles:"
             echo "  start   - Démarre tous les services (compile automatiquement)"
@@ -357,6 +433,7 @@ main() {
             echo "  restart - Redémarre tous les services"
             echo "  logs    - Affiche les logs en temps réel"
             echo "  status  - Vérifie l'état des services"
+            echo "  reports - Génère les rapports JaCoCo et Surefire"
             echo "  clean   - Nettoyage complet (⚠️ supprime les données)"
             echo ""
             echo "💡 Nouveauté: Docker compile tout automatiquement!"
@@ -366,6 +443,7 @@ main() {
             echo "  ./build.sh start    # Démarrage complet"
             echo "  ./build.sh logs     # Voir les logs"
             echo "  ./build.sh status   # Vérifier l'état"
+            echo "  ./build.sh reports  # Générer rapports tests"
             echo ""
             echo "Plateforme détectée: $MACHINE"
             exit 1
